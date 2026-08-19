@@ -9,8 +9,10 @@ import userModel from "../models/userModel.js";
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_SECRET_KEY
+    api_secret: process.env.CLOUDINARY_SECRET_KEY,
+    secure: true
 });
+
 
 const loginAdmin = async (req, res) => {
     try {
@@ -105,6 +107,12 @@ const appointmentCancel = async (req, res) => {
     }
 };
 
+
+/*
+========================================================
+ADD DOCTOR
+========================================================
+*/
 
 const addDoctor = async (req, res) => {
 
@@ -202,38 +210,31 @@ const addDoctor = async (req, res) => {
         }
 
 
-        if (
-            !process.env.CLOUDINARY_NAME ||
-            !process.env.CLOUDINARY_API_KEY ||
-            !process.env.CLOUDINARY_SECRET_KEY
-        ) {
+        /*
+        ========================================================
+        CLOUDINARY CONFIG CHECK
+        ========================================================
+        */
+
+        if (!process.env.CLOUDINARY_NAME) {
 
             console.error(
-                "CLOUDINARY CONFIGURATION ERROR"
-            );
-
-            console.error(
-                "CLOUDINARY_NAME exists:",
-                !!process.env.CLOUDINARY_NAME
-            );
-
-            console.error(
-                "CLOUDINARY_API_KEY exists:",
-                !!process.env.CLOUDINARY_API_KEY
-            );
-
-            console.error(
-                "CLOUDINARY_SECRET_KEY exists:",
-                !!process.env.CLOUDINARY_SECRET_KEY
+                "CLOUDINARY_NAME is missing"
             );
 
             return res.status(500).json({
                 success: false,
                 message:
-                    "Cloudinary configuration is missing on Render"
+                    "CLOUDINARY_NAME is missing on Render"
             });
         }
 
+
+        /*
+        ========================================================
+        CHECK EXISTING DOCTOR
+        ========================================================
+        */
 
         const existingDoctor =
             await doctorModel.findOne({
@@ -251,6 +252,12 @@ const addDoctor = async (req, res) => {
         }
 
 
+        /*
+        ========================================================
+        HASH PASSWORD
+        ========================================================
+        */
+
         const salt =
             await bcrypt.genSalt(10);
 
@@ -261,95 +268,135 @@ const addDoctor = async (req, res) => {
             );
 
 
-        const uploadImage =
-            () => new Promise(
-                (resolve, reject) => {
-
-                    const stream =
-                        cloudinary.uploader.upload_stream(
-                            {
-                                resource_type: "image",
-                                folder: "prescripto/doctors"
-                            },
-                            (error, result) => {
-
-                                if (error) {
-
-                                    console.error(
-                                        "================================"
-                                    );
-
-                                    console.error(
-                                        "CLOUDINARY UPLOAD ERROR"
-                                    );
-
-                                    console.error(
-                                        "Message:",
-                                        error.message
-                                    );
-
-                                    console.error(
-                                        "HTTP Code:",
-                                        error.http_code
-                                    );
-
-                                    console.error(
-                                        "Name:",
-                                        error.name
-                                    );
-
-                                    console.error(
-                                        "Full Cloudinary Error:",
-                                        error
-                                    );
-
-                                    console.error(
-                                        "================================"
-                                    );
-
-                                    reject(error);
-
-                                } else {
-
-                                    console.log(
-                                        "CLOUDINARY UPLOAD SUCCESS"
-                                    );
-
-                                    console.log(
-                                        "Cloudinary URL:",
-                                        result?.secure_url
-                                    );
-
-                                    resolve(result);
-                                }
-                            }
-                        );
-
-
-                    stream.on(
-                        "error",
-                        (streamError) => {
-
-                            console.error(
-                                "CLOUDINARY STREAM ERROR:",
-                                streamError
-                            );
-
-                            reject(streamError);
-                        }
-                    );
-
-
-                    stream.end(
-                        imageFile.buffer
-                    );
-                }
-            );
-
+        /*
+        ========================================================
+        CLOUDINARY UNSIGNED UPLOAD
+        ========================================================
+        */
 
         console.log(
             "Uploading doctor image to Cloudinary..."
         );
+
+        console.log(
+            "Using upload preset: prescripto_doctors"
+        );
+
+
+        const uploadImage =
+            () =>
+                new Promise(
+                    (resolve, reject) => {
+
+                        const stream =
+                            cloudinary.uploader.upload_stream(
+                                {
+                                    resource_type: "image",
+
+                                    upload_preset:
+                                        "prescripto_doctors",
+
+                                    folder:
+                                        "prescripto/doctors"
+                                },
+
+                                (error, result) => {
+
+                                    if (error) {
+
+                                        console.error(
+                                            "================================"
+                                        );
+
+                                        console.error(
+                                            "CLOUDINARY UPLOAD ERROR"
+                                        );
+
+                                        console.error(
+                                            "Message:",
+                                            error?.message
+                                        );
+
+                                        console.error(
+                                            "HTTP Code:",
+                                            error?.http_code
+                                        );
+
+                                        console.error(
+                                            "Name:",
+                                            error?.name
+                                        );
+
+                                        console.error(
+                                            "Error:",
+                                            error?.error
+                                        );
+
+                                        console.error(
+                                            "Response:",
+                                            error?.response
+                                        );
+
+                                        console.error(
+                                            "Full Cloudinary Error:",
+                                            error
+                                        );
+
+                                        console.error(
+                                            "================================"
+                                        );
+
+                                        reject(error);
+
+                                    } else {
+
+                                        console.log(
+                                            "================================"
+                                        );
+
+                                        console.log(
+                                            "CLOUDINARY UPLOAD SUCCESS"
+                                        );
+
+                                        console.log(
+                                            "Cloudinary URL:",
+                                            result?.secure_url
+                                        );
+
+                                        console.log(
+                                            "Public ID:",
+                                            result?.public_id
+                                        );
+
+                                        console.log(
+                                            "================================"
+                                        );
+
+                                        resolve(result);
+                                    }
+                                }
+                            );
+
+
+                        stream.on(
+                            "error",
+                            (streamError) => {
+
+                                console.error(
+                                    "CLOUDINARY STREAM ERROR:",
+                                    streamError
+                                );
+
+                                reject(streamError);
+                            }
+                        );
+
+
+                        stream.end(
+                            imageFile.buffer
+                        );
+                    }
+                );
 
 
         const imageUpload =
@@ -375,6 +422,12 @@ const addDoctor = async (req, res) => {
         );
 
 
+        /*
+        ========================================================
+        ADDRESS
+        ========================================================
+        */
+
         let parsedAddress;
 
         try {
@@ -393,6 +446,12 @@ const addDoctor = async (req, res) => {
             });
         }
 
+
+        /*
+        ========================================================
+        DOCTOR DATA
+        ========================================================
+        */
 
         const doctorData = {
 
@@ -424,6 +483,12 @@ const addDoctor = async (req, res) => {
                 Date.now()
         };
 
+
+        /*
+        ========================================================
+        SAVE DOCTOR
+        ========================================================
+        */
 
         const newDoctor =
             new doctorModel(
@@ -472,6 +537,16 @@ const addDoctor = async (req, res) => {
         console.error(
             "HTTP Code:",
             error?.http_code
+        );
+
+        console.error(
+            "Error:",
+            error?.error
+        );
+
+        console.error(
+            "Response:",
+            error?.response
         );
 
         console.error(

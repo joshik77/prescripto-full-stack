@@ -6,6 +6,11 @@ import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
 import userModel from "../models/userModel.js";
 
+
+// ======================================================
+// CLOUDINARY CONFIG
+// ======================================================
+
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -14,7 +19,12 @@ cloudinary.config({
 });
 
 
+// ======================================================
+// ADMIN LOGIN
+// ======================================================
+
 const loginAdmin = async (req, res) => {
+
     try {
 
         const { email, password } = req.body;
@@ -54,6 +64,10 @@ const loginAdmin = async (req, res) => {
 };
 
 
+// ======================================================
+// ADMIN APPOINTMENTS
+// ======================================================
+
 const appointmentsAdmin = async (req, res) => {
 
     try {
@@ -68,7 +82,10 @@ const appointmentsAdmin = async (req, res) => {
 
     } catch (error) {
 
-        console.error("ADMIN APPOINTMENTS ERROR:", error);
+        console.error(
+            "ADMIN APPOINTMENTS ERROR:",
+            error
+        );
 
         res.json({
             success: false,
@@ -77,6 +94,10 @@ const appointmentsAdmin = async (req, res) => {
     }
 };
 
+
+// ======================================================
+// CANCEL APPOINTMENT
+// ======================================================
 
 const appointmentCancel = async (req, res) => {
 
@@ -98,7 +119,10 @@ const appointmentCancel = async (req, res) => {
 
     } catch (error) {
 
-        console.error("ADMIN CANCEL ERROR:", error);
+        console.error(
+            "ADMIN CANCEL ERROR:",
+            error
+        );
 
         res.json({
             success: false,
@@ -108,20 +132,264 @@ const appointmentCancel = async (req, res) => {
 };
 
 
-/*
-========================================================
-ADD DOCTOR
-========================================================
-*/
+// ======================================================
+// CLOUDINARY UPLOAD
+// ======================================================
+
+const uploadDoctorImage = (buffer) => {
+
+    return new Promise((resolve, reject) => {
+
+        console.log(
+            "========== CLOUDINARY UPLOAD START =========="
+        );
+
+        console.log(
+            "Cloud name:",
+            process.env.CLOUDINARY_NAME
+        );
+
+        console.log(
+            "API key exists:",
+            !!process.env.CLOUDINARY_API_KEY
+        );
+
+        console.log(
+            "API secret exists:",
+            !!process.env.CLOUDINARY_SECRET_KEY
+        );
+
+        console.log(
+            "Buffer exists:",
+            !!buffer
+        );
+
+        console.log(
+            "Buffer size:",
+            buffer?.length
+        );
+
+        const stream =
+            cloudinary.uploader.upload_stream(
+
+                {
+                    resource_type: "image"
+                },
+
+                (error, result) => {
+
+                    if (error) {
+
+                        console.error(
+                            "================================================"
+                        );
+
+                        console.error(
+                            "       CLOUDINARY REAL UPLOAD ERROR"
+                        );
+
+                        console.error(
+                            "================================================"
+                        );
+
+                        console.error(
+                            "Message:",
+                            error?.message
+                        );
+
+                        console.error(
+                            "HTTP Code:",
+                            error?.http_code
+                        );
+
+                        console.error(
+                            "Name:",
+                            error?.name
+                        );
+
+                        console.error(
+                            "Error:",
+                            error?.error
+                        );
+
+                        console.error(
+                            "Response:",
+                            error?.response
+                        );
+
+                        console.error(
+                            "Response body:",
+                            error?.response?.body
+                        );
+
+                        console.error(
+                            "Response data:",
+                            error?.response?.data
+                        );
+
+                        console.error(
+                            "Response status:",
+                            error?.response?.status
+                        );
+
+                        console.error(
+                            "Response headers:",
+                            error?.response?.headers
+                        );
+
+                        console.error(
+                            "X-Cld-Error:",
+                            error?.response?.headers?.["x-cld-error"]
+                        );
+
+                        console.error(
+                            "x-cld-error:",
+                            error?.response?.headers?.["X-Cld-Error"]
+                        );
+
+                        console.error(
+                            "Full error JSON:"
+                        );
+
+                        try {
+
+                            console.error(
+                                JSON.stringify(
+                                    error,
+                                    Object.getOwnPropertyNames(error),
+                                    2
+                                )
+                            );
+
+                        } catch (jsonError) {
+
+                            console.error(
+                                "Could not stringify Cloudinary error:",
+                                jsonError
+                            );
+                        }
+
+                        console.error(
+                            "================================================"
+                        );
+
+                        reject(error);
+
+                        return;
+                    }
+
+
+                    console.log(
+                        "================================================"
+                    );
+
+                    console.log(
+                        "       CLOUDINARY UPLOAD SUCCESS"
+                    );
+
+                    console.log(
+                        "================================================"
+                    );
+
+                    console.log(
+                        "Secure URL:",
+                        result?.secure_url
+                    );
+
+                    console.log(
+                        "Public ID:",
+                        result?.public_id
+                    );
+
+                    console.log(
+                        "Resource type:",
+                        result?.resource_type
+                    );
+
+                    console.log(
+                        "Format:",
+                        result?.format
+                    );
+
+                    console.log(
+                        "================================================"
+                    );
+
+                    resolve(result);
+                }
+            );
+
+
+        stream.on(
+            "error",
+            (streamError) => {
+
+                console.error(
+                    "================================================"
+                );
+
+                console.error(
+                    "       CLOUDINARY STREAM ERROR"
+                );
+
+                console.error(
+                    "================================================"
+                );
+
+                console.error(
+                    "Message:",
+                    streamError?.message
+                );
+
+                console.error(
+                    "Full stream error:",
+                    streamError
+                );
+
+                console.error(
+                    "================================================"
+                );
+
+                reject(streamError);
+            }
+        );
+
+
+        stream.end(buffer);
+    });
+};
+
+
+// ======================================================
+// ADD DOCTOR
+// ======================================================
 
 const addDoctor = async (req, res) => {
 
     try {
 
-        console.log("==============================");
-        console.log("ADD DOCTOR REQUEST");
-        console.log("Body:", req.body);
-        console.log("File exists:", !!req.file);
+        console.log(
+            "=============================================="
+        );
+
+        console.log(
+            "             ADD DOCTOR REQUEST"
+        );
+
+        console.log(
+            "=============================================="
+        );
+
+        console.log(
+            "Body:",
+            req.body
+        );
+
+        console.log(
+            "File exists:",
+            !!req.file
+        );
+
 
         if (req.file) {
 
@@ -139,9 +407,22 @@ const addDoctor = async (req, res) => {
                 "File type:",
                 req.file.mimetype
             );
+
+            console.log(
+                "File buffer exists:",
+                !!req.file.buffer
+            );
+
+            console.log(
+                "File buffer size:",
+                req.file.buffer?.length
+            );
         }
 
-        console.log("==============================");
+
+        console.log(
+            "=============================================="
+        );
 
 
         const {
@@ -160,6 +441,10 @@ const addDoctor = async (req, res) => {
         const imageFile = req.file;
 
 
+        // ==================================================
+        // VALIDATION
+        // ==================================================
+
         if (
             !name ||
             !email ||
@@ -174,8 +459,11 @@ const addDoctor = async (req, res) => {
         ) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message: "Missing Details"
+
             });
         }
 
@@ -183,9 +471,25 @@ const addDoctor = async (req, res) => {
         if (!imageFile) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message:
-                    "Doctor image is required. Please select an image file."
+                    "Doctor image is required"
+
+            });
+        }
+
+
+        if (!imageFile.buffer) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Image buffer is missing"
+
             });
         }
 
@@ -193,9 +497,12 @@ const addDoctor = async (req, res) => {
         if (!validator.isEmail(email)) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message:
                     "Please enter a valid email"
+
             });
         }
 
@@ -203,38 +510,19 @@ const addDoctor = async (req, res) => {
         if (password.length < 8) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message:
                     "Please enter a strong password"
+
             });
         }
 
 
-        /*
-        ========================================================
-        CLOUDINARY CONFIG CHECK
-        ========================================================
-        */
-
-        if (!process.env.CLOUDINARY_NAME) {
-
-            console.error(
-                "CLOUDINARY_NAME is missing"
-            );
-
-            return res.status(500).json({
-                success: false,
-                message:
-                    "CLOUDINARY_NAME is missing on Render"
-            });
-        }
-
-
-        /*
-        ========================================================
-        CHECK EXISTING DOCTOR
-        ========================================================
-        */
+        // ==================================================
+        // CHECK DOCTOR
+        // ==================================================
 
         const existingDoctor =
             await doctorModel.findOne({
@@ -245,21 +533,23 @@ const addDoctor = async (req, res) => {
         if (existingDoctor) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message:
                     "Doctor with this email already exists"
+
             });
         }
 
 
-        /*
-        ========================================================
-        HASH PASSWORD
-        ========================================================
-        */
+        // ==================================================
+        // HASH PASSWORD
+        // ==================================================
 
         const salt =
             await bcrypt.genSalt(10);
+
 
         const hashedPassword =
             await bcrypt.hash(
@@ -268,139 +558,79 @@ const addDoctor = async (req, res) => {
             );
 
 
-        /*
-        ========================================================
-        CLOUDINARY UNSIGNED UPLOAD
-        ========================================================
-        */
+        // ==================================================
+        // CLOUDINARY UPLOAD
+        // ==================================================
 
         console.log(
             "Uploading doctor image to Cloudinary..."
         );
 
-        console.log(
-            "Using upload preset: prescripto_doctors"
-        );
+
+        let imageUpload;
 
 
-        const uploadImage =
-            () =>
-                new Promise(
-                    (resolve, reject) => {
+        try {
 
-                        const stream =
-                            cloudinary.uploader.upload_stream(
-                                {
-                                    resource_type: "image",
-
-                                    upload_preset:
-                                        "prescripto_doctors",
-
-                                    folder:
-                                        "prescripto/doctors"
-                                },
-
-                                (error, result) => {
-
-                                    if (error) {
-
-                                        console.error(
-                                            "================================"
-                                        );
-
-                                        console.error(
-                                            "CLOUDINARY UPLOAD ERROR"
-                                        );
-
-                                        console.error(
-                                            "Message:",
-                                            error?.message
-                                        );
-
-                                        console.error(
-                                            "HTTP Code:",
-                                            error?.http_code
-                                        );
-
-                                        console.error(
-                                            "Name:",
-                                            error?.name
-                                        );
-
-                                        console.error(
-                                            "Error:",
-                                            error?.error
-                                        );
-
-                                        console.error(
-                                            "Response:",
-                                            error?.response
-                                        );
-
-                                        console.error(
-                                            "Full Cloudinary Error:",
-                                            error
-                                        );
-
-                                        console.error(
-                                            "================================"
-                                        );
-
-                                        reject(error);
-
-                                    } else {
-
-                                        console.log(
-                                            "================================"
-                                        );
-
-                                        console.log(
-                                            "CLOUDINARY UPLOAD SUCCESS"
-                                        );
-
-                                        console.log(
-                                            "Cloudinary URL:",
-                                            result?.secure_url
-                                        );
-
-                                        console.log(
-                                            "Public ID:",
-                                            result?.public_id
-                                        );
-
-                                        console.log(
-                                            "================================"
-                                        );
-
-                                        resolve(result);
-                                    }
-                                }
-                            );
-
-
-                        stream.on(
-                            "error",
-                            (streamError) => {
-
-                                console.error(
-                                    "CLOUDINARY STREAM ERROR:",
-                                    streamError
-                                );
-
-                                reject(streamError);
-                            }
-                        );
-
-
-                        stream.end(
-                            imageFile.buffer
-                        );
-                    }
+            imageUpload =
+                await uploadDoctorImage(
+                    imageFile.buffer
                 );
 
+        } catch (cloudinaryError) {
 
-        const imageUpload =
-            await uploadImage();
+            console.error(
+                "=============================================="
+            );
+
+            console.error(
+                "       ADD DOCTOR CLOUDINARY FAILURE"
+            );
+
+            console.error(
+                "=============================================="
+            );
+
+            console.error(
+                "Message:",
+                cloudinaryError?.message
+            );
+
+            console.error(
+                "HTTP Code:",
+                cloudinaryError?.http_code
+            );
+
+            console.error(
+                "Name:",
+                cloudinaryError?.name
+            );
+
+            console.error(
+                "X-Cld-Error:",
+                cloudinaryError?.response?.headers?.["x-cld-error"]
+            );
+
+            console.error(
+                "Full error:",
+                cloudinaryError
+            );
+
+            console.error(
+                "=============================================="
+            );
+
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    cloudinaryError?.message ||
+                    "Cloudinary image upload failed"
+
+            });
+        }
 
 
         if (
@@ -409,26 +639,32 @@ const addDoctor = async (req, res) => {
         ) {
 
             return res.status(500).json({
+
                 success: false,
+
                 message:
-                    "Cloudinary image upload failed"
+                    "Cloudinary returned no image URL"
+
             });
         }
 
 
+        const imageUrl =
+            imageUpload.secure_url;
+
+
         console.log(
-            "Cloudinary upload successful:",
-            imageUpload.secure_url
+            "Cloudinary image URL:",
+            imageUrl
         );
 
 
-        /*
-        ========================================================
-        ADDRESS
-        ========================================================
-        */
+        // ==================================================
+        // ADDRESS
+        // ==================================================
 
         let parsedAddress;
+
 
         try {
 
@@ -440,18 +676,19 @@ const addDoctor = async (req, res) => {
         } catch (error) {
 
             return res.status(400).json({
+
                 success: false,
+
                 message:
                     "Invalid address format"
+
             });
         }
 
 
-        /*
-        ========================================================
-        DOCTOR DATA
-        ========================================================
-        */
+        // ==================================================
+        // DOCTOR DATA
+        // ==================================================
 
         const doctorData = {
 
@@ -460,7 +697,7 @@ const addDoctor = async (req, res) => {
             email,
 
             image:
-                imageUpload.secure_url,
+                imageUrl,
 
             password:
                 hashedPassword,
@@ -484,11 +721,9 @@ const addDoctor = async (req, res) => {
         };
 
 
-        /*
-        ========================================================
-        SAVE DOCTOR
-        ========================================================
-        */
+        // ==================================================
+        // SAVE DOCTOR
+        // ==================================================
 
         const newDoctor =
             new doctorModel(
@@ -500,8 +735,20 @@ const addDoctor = async (req, res) => {
 
 
         console.log(
-            "Doctor successfully added:",
+            "=============================================="
+        );
+
+        console.log(
+            "DOCTOR SUCCESSFULLY ADDED"
+        );
+
+        console.log(
+            "Email:",
             email
+        );
+
+        console.log(
+            "=============================================="
         );
 
 
@@ -514,14 +761,19 @@ const addDoctor = async (req, res) => {
 
         });
 
+
     } catch (error) {
 
         console.error(
-            "=============================="
+            "=============================================="
         );
 
         console.error(
-            "ADD DOCTOR ERROR"
+            "             ADD DOCTOR ERROR"
+        );
+
+        console.error(
+            "=============================================="
         );
 
         console.error(
@@ -550,12 +802,32 @@ const addDoctor = async (req, res) => {
         );
 
         console.error(
-            "Full Error:",
+            "Response body:",
+            error?.response?.body
+        );
+
+        console.error(
+            "Response data:",
+            error?.response?.data
+        );
+
+        console.error(
+            "Response headers:",
+            error?.response?.headers
+        );
+
+        console.error(
+            "X-Cld-Error:",
+            error?.response?.headers?.["x-cld-error"]
+        );
+
+        console.error(
+            "Full error:",
             error
         );
 
         console.error(
-            "=============================="
+            "=============================================="
         );
 
 
@@ -572,6 +844,10 @@ const addDoctor = async (req, res) => {
 };
 
 
+// ======================================================
+// ALL DOCTORS
+// ======================================================
+
 const allDoctors = async (req, res) => {
 
     try {
@@ -581,9 +857,13 @@ const allDoctors = async (req, res) => {
                 .find({})
                 .select("-password");
 
+
         res.json({
+
             success: true,
+
             doctors
+
         });
 
     } catch (error) {
@@ -594,24 +874,38 @@ const allDoctors = async (req, res) => {
         );
 
         res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
+
         });
     }
 };
 
 
+// ======================================================
+// REMOVE DOCTOR
+// ======================================================
+
 const removeDoctor = async (req, res) => {
 
     try {
 
-        const { id } = req.body;
+        const { id } =
+            req.body;
+
 
         if (!id) {
 
             return res.status(400).json({
+
                 success: false,
-                message: "Doctor ID is required"
+
+                message:
+                    "Doctor ID is required"
+
             });
         }
 
@@ -623,8 +917,12 @@ const removeDoctor = async (req, res) => {
         if (!doctor) {
 
             return res.status(404).json({
+
                 success: false,
-                message: "Doctor not found"
+
+                message:
+                    "Doctor not found"
+
             });
         }
 
@@ -633,8 +931,12 @@ const removeDoctor = async (req, res) => {
 
 
         res.json({
+
             success: true,
-            message: "Doctor removed successfully"
+
+            message:
+                "Doctor removed successfully"
+
         });
 
     } catch (error) {
@@ -645,12 +947,20 @@ const removeDoctor = async (req, res) => {
         );
 
         res.status(500).json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
+
         });
     }
 };
 
+
+// ======================================================
+// ADMIN DASHBOARD
+// ======================================================
 
 const adminDashboard = async (req, res) => {
 
@@ -659,11 +969,14 @@ const adminDashboard = async (req, res) => {
         const doctors =
             await doctorModel.find({});
 
+
         const users =
             await userModel.find({});
 
+
         const appointments =
             await appointmentModel.find({});
+
 
         const dashData = {
 
@@ -678,12 +991,16 @@ const adminDashboard = async (req, res) => {
 
             latestAppointments:
                 appointments.reverse()
+
         };
 
 
         res.json({
+
             success: true,
+
             dashData
+
         });
 
     } catch (error) {
@@ -694,12 +1011,20 @@ const adminDashboard = async (req, res) => {
         );
 
         res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
+
         });
     }
 };
 
+
+// ======================================================
+// EXPORTS
+// ======================================================
 
 export {
     loginAdmin,

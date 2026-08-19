@@ -1,151 +1,263 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, {
+    useContext,
+    useEffect,
+    useState
+} from 'react'
+
 import { useNavigate } from 'react-router-dom'
-import { AppContext } from '../context/AppContext'
+
+import {
+    AppContext
+} from '../context/AppContext'
+
 import axios from 'axios'
-import { toast } from 'react-toastify'
-import { assets } from '../assets/assets'
+
+import {
+    toast
+} from 'react-toastify'
+
+import {
+    assets
+} from '../assets/assets'
+
 
 const MyAppointments = () => {
 
-    const { backendUrl, token } = useContext(AppContext)
-    const navigate = useNavigate()
+    const {
+        backendUrl,
+        token
+    } = useContext(AppContext)
 
-    const [appointments, setAppointments] = useState([])
-    const [payment, setPayment] = useState('')
+    const navigate =
+        useNavigate()
+
+    const [
+        appointments,
+        setAppointments
+    ] = useState([])
+
+    const [
+        payment,
+        setPayment
+    ] = useState('')
+
 
     const months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
     ]
 
-    // Function to format date
-    const slotDateFormat = (slotDate) => {
-        const dateArray = slotDate.split('_')
+
+    const slotDateFormat = (
+        slotDate
+    ) => {
+
+        const dateArray =
+            slotDate.split('_')
 
         return (
             dateArray[0] +
             " " +
-            months[Number(dateArray[1]) - 1] +
+            months[
+                Number(dateArray[1]) - 1
+            ] +
             " " +
             dateArray[2]
         )
     }
 
-    // Get user appointments
-    const getUserAppointments = async () => {
 
-        try {
+    // ==================================================
+    // GET APPOINTMENTS
+    // ==================================================
 
-            const { data } = await axios.get(
-                backendUrl + '/api/user/appointments',
-                {
-                    headers: {
-                        token
+    const getUserAppointments =
+        async () => {
+
+            try {
+
+                const {
+                    data
+                } = await axios.get(
+
+                    backendUrl +
+                    '/api/user/appointments',
+
+                    {
+                        headers: {
+                            token
+                        }
                     }
+                )
+
+
+                if (data.success) {
+
+                    setAppointments(
+                        [...data.appointments]
+                            .reverse()
+                    )
+
+                } else {
+
+                    toast.error(
+                        data.message
+                    )
                 }
-            )
 
-            if (data.success) {
-                setAppointments(data.appointments.reverse())
-            } else {
-                toast.error(data.message)
+            } catch (error) {
+
+                console.error(
+                    "GET APPOINTMENTS ERROR:",
+                    error.response?.data ||
+                    error
+                )
+
+                toast.error(
+                    error.response?.data?.message ||
+                    error.message
+                )
             }
-
-        } catch (error) {
-
-            console.error(
-                'GET APPOINTMENTS ERROR:',
-                error.response?.data || error
-            )
-
-            toast.error(
-                error.response?.data?.message ||
-                error.message
-            )
         }
-    }
 
-    // Cancel appointment
-    const cancelAppointment = async (appointmentId) => {
 
-        try {
+    // ==================================================
+    // CANCEL APPOINTMENT
+    // ==================================================
 
-            const { data } = await axios.post(
-                backendUrl + '/api/user/cancel-appointment',
-                {
-                    appointmentId
-                },
-                {
-                    headers: {
-                        token
+    const cancelAppointment =
+        async (
+            appointmentId
+        ) => {
+
+            try {
+
+                const {
+                    data
+                } = await axios.post(
+
+                    backendUrl +
+                    '/api/user/cancel-appointment',
+
+                    {
+                        appointmentId
+                    },
+
+                    {
+                        headers: {
+                            token
+                        }
                     }
+                )
+
+
+                if (data.success) {
+
+                    toast.success(
+                        data.message
+                    )
+
+                    getUserAppointments()
+
+                } else {
+
+                    toast.error(
+                        data.message
+                    )
                 }
-            )
 
-            if (data.success) {
+            } catch (error) {
 
-                toast.success(data.message)
+                console.error(
+                    "CANCEL ERROR:",
+                    error.response?.data ||
+                    error
+                )
 
-                getUserAppointments()
-
-            } else {
-
-                toast.error(data.message)
+                toast.error(
+                    error.response?.data?.message ||
+                    error.message
+                )
             }
-
-        } catch (error) {
-
-            console.error(
-                'CANCEL APPOINTMENT ERROR:',
-                error.response?.data || error
-            )
-
-            toast.error(
-                error.response?.data?.message ||
-                error.message
-            )
         }
-    }
 
-    // Initialize Razorpay payment
-    const initPay = (order) => {
 
-        console.log('==============================')
-        console.log('INITIALIZING RAZORPAY')
-        console.log('Order:', order)
-        console.log('==============================')
+    // ==================================================
+    // RAZORPAY CHECKOUT
+    // ==================================================
 
-        // Check Razorpay SDK
+    const initPay = (
+        order
+    ) => {
+
+        console.log(
+            "================================"
+        )
+
+        console.log(
+            "RAZORPAY CHECKOUT"
+        )
+
+        console.log(
+            "Order:",
+            order
+        )
+
+        console.log(
+            "Frontend Razorpay Key:",
+            import.meta.env
+                .VITE_RAZORPAY_KEY_ID
+        )
+
+        console.log(
+            "================================"
+        )
+
+
+        // Razorpay SDK check
         if (!window.Razorpay) {
 
-            console.error('RAZORPAY SDK NOT FOUND')
-
             toast.error(
-                'Razorpay failed to load. Please refresh the page.'
+                "Razorpay SDK is not loaded. Please refresh the page."
             )
-
-            return
-        }
-
-        // Get frontend Razorpay key
-        const razorpayKey =
-            import.meta.env.VITE_RAZORPAY_KEY_ID
-
-        // Check key
-        if (!razorpayKey) {
 
             console.error(
-                'VITE_RAZORPAY_KEY_ID IS MISSING'
-            )
-
-            toast.error(
-                'Razorpay Key ID is missing.'
+                "window.Razorpay is undefined"
             )
 
             return
         }
 
-        // Validate order
+
+        const razorpayKey =
+            import.meta.env
+                .VITE_RAZORPAY_KEY_ID
+
+
+        if (!razorpayKey) {
+
+            toast.error(
+                "Razorpay Key ID is missing."
+            )
+
+            console.error(
+                "VITE_RAZORPAY_KEY_ID is undefined"
+            )
+
+            return
+        }
+
+
         if (
             !order ||
             !order.id ||
@@ -153,367 +265,411 @@ const MyAppointments = () => {
             !order.currency
         ) {
 
-            console.error(
-                'INVALID RAZORPAY ORDER:',
-                order
+            toast.error(
+                "Invalid Razorpay order."
             )
 
-            toast.error(
-                'Invalid Razorpay order received.'
+            console.error(
+                "INVALID RAZORPAY ORDER:",
+                order
             )
 
             return
         }
 
-        console.log(
-            'Razorpay Key:',
-            razorpayKey
-        )
-
-        console.log(
-            'Razorpay Order ID:',
-            order.id
-        )
-
-        console.log(
-            'Razorpay Amount:',
-            order.amount
-        )
-
-        console.log(
-            'Razorpay Currency:',
-            order.currency
-        )
 
         const options = {
 
-            key: razorpayKey,
+            key:
+                razorpayKey,
 
-            amount: order.amount,
+            amount:
+                order.amount,
 
-            currency: order.currency,
+            currency:
+                order.currency,
 
-            name: 'Prescripto',
+            name:
+                "Prescripto",
 
-            description: 'Appointment Payment',
+            description:
+                "Doctor Appointment Payment",
 
-            order_id: order.id,
+            order_id:
+                order.id,
 
-            handler: async function (response) {
 
-                console.log(
-                    '=============================='
+            handler:
+                async function (
+                    response
+                ) {
+
+                    console.log(
+                        "RAZORPAY SUCCESS:",
+                        response
+                    )
+
+
+                    try {
+
+                        const {
+                            data
+                        } = await axios.post(
+
+                            backendUrl +
+                            "/api/user/verifyRazorpay",
+
+                            {
+                                razorpay_order_id:
+                                    response.razorpay_order_id,
+
+                                razorpay_payment_id:
+                                    response.razorpay_payment_id,
+
+                                razorpay_signature:
+                                    response.razorpay_signature
+                            },
+
+                            {
+                                headers: {
+                                    token
+                                }
+                            }
+                        )
+
+
+                        console.log(
+                            "VERIFY RESPONSE:",
+                            data
+                        )
+
+
+                        if (
+                            data.success
+                        ) {
+
+                            toast.success(
+                                "Payment Successful"
+                            )
+
+                            setPayment('')
+
+                            await getUserAppointments()
+
+                            navigate(
+                                "/my-appointments"
+                            )
+
+                        } else {
+
+                            toast.error(
+                                data.message ||
+                                "Payment verification failed"
+                            )
+                        }
+
+                    } catch (error) {
+
+                        console.error(
+                            "VERIFY ERROR:",
+                            error.response?.data ||
+                            error
+                        )
+
+                        toast.error(
+                            error.response?.data?.message ||
+                            error.message ||
+                            "Payment verification failed"
+                        )
+                    }
+                }
+        }
+
+
+        const rzp =
+            new window.Razorpay(
+                options
+            )
+
+
+        // THIS IS VERY IMPORTANT
+        rzp.on(
+            "payment.failed",
+            function (
+                response
+            ) {
+
+                console.error(
+                    "================================"
                 )
 
-                console.log(
-                    'RAZORPAY PAYMENT SUCCESS'
+                console.error(
+                    "RAZORPAY PAYMENT FAILED"
                 )
 
-                console.log(
+                console.error(
                     response
                 )
 
-                console.log(
-                    '=============================='
-                )
-
-                try {
-
-                    const { data } = await axios.post(
-
-                        backendUrl +
-                        '/api/user/verifyRazorpay',
-
-                        {
-                            razorpay_payment_id:
-                                response.razorpay_payment_id,
-
-                            razorpay_order_id:
-                                response.razorpay_order_id,
-
-                            razorpay_signature:
-                                response.razorpay_signature
-                        },
-
-                        {
-                            headers: {
-                                token
-                            }
-                        }
-                    )
-
-                    console.log(
-                        'RAZORPAY VERIFY RESPONSE:',
-                        data
-                    )
-
-                    if (data.success) {
-
-                        toast.success(
-                            'Payment Successful'
-                        )
-
-                        setPayment('')
-
-                        await getUserAppointments()
-
-                        navigate('/my-appointments')
-
-                    } else {
-
-                        toast.error(
-                            data.message ||
-                            'Payment verification failed'
-                        )
-                    }
-
-                } catch (error) {
-
-                    console.error(
-                        'RAZORPAY VERIFY ERROR:',
-                        error.response?.data ||
-                        error
-                    )
-
-                    toast.error(
-
-                        error.response?.data?.message ||
-
-                        'Payment verification failed'
-                    )
-                }
-            }
-        }
-
-        const rzp = new window.Razorpay(options)
-
-        // Razorpay payment failed event
-        rzp.on(
-            'payment.failed',
-            function (response) {
-
                 console.error(
-                    '================================'
-                )
-
-                console.error(
-                    'RAZORPAY PAYMENT FAILED'
-                )
-
-                console.error(
-                    'Code:',
+                    "Code:",
                     response.error?.code
                 )
 
                 console.error(
-                    'Description:',
+                    "Description:",
                     response.error?.description
                 )
 
                 console.error(
-                    'Source:',
+                    "Source:",
                     response.error?.source
                 )
 
                 console.error(
-                    'Step:',
+                    "Step:",
                     response.error?.step
                 )
 
                 console.error(
-                    'Reason:',
+                    "Reason:",
                     response.error?.reason
                 )
 
                 console.error(
-                    'Metadata:',
-                    response.error?.metadata
+                    "================================"
                 )
 
-                console.error(
-                    'FULL RESPONSE:',
-                    response
-                )
-
-                console.error(
-                    '================================'
-                )
 
                 const error =
                     response.error || {}
 
+
+                toast.error(
+                    error.description ||
+                    "Razorpay payment failed"
+                )
+
+
                 alert(
 
-                    'RAZORPAY PAYMENT FAILED\n\n' +
+                    "RAZORPAY PAYMENT FAILED\n\n" +
 
-                    'Code: ' +
-                    (error.code || 'N/A') +
+                    "Code: " +
+                    (
+                        error.code ||
+                        "N/A"
+                    ) +
 
-                    '\n\nDescription: ' +
-                    (error.description || 'N/A') +
+                    "\n\nDescription: " +
+                    (
+                        error.description ||
+                        "N/A"
+                    ) +
 
-                    '\n\nSource: ' +
-                    (error.source || 'N/A') +
+                    "\n\nSource: " +
+                    (
+                        error.source ||
+                        "N/A"
+                    ) +
 
-                    '\n\nStep: ' +
-                    (error.step || 'N/A') +
+                    "\n\nStep: " +
+                    (
+                        error.step ||
+                        "N/A"
+                    ) +
 
-                    '\n\nReason: ' +
-                    (error.reason || 'N/A')
+                    "\n\nReason: " +
+                    (
+                        error.reason ||
+                        "N/A"
+                    )
                 )
             }
         )
 
-        // Payment authorized
+
         rzp.on(
-            'payment.authorized',
-            function (response) {
+            "payment.authorized",
+            function (
+                response
+            ) {
 
                 console.log(
-                    'RAZORPAY PAYMENT AUTHORIZED:',
+                    "PAYMENT AUTHORIZED:",
                     response
                 )
             }
         )
 
-        // Payment captured
+
         rzp.on(
-            'payment.captured',
-            function (response) {
+            "payment.captured",
+            function (
+                response
+            ) {
 
                 console.log(
-                    'RAZORPAY PAYMENT CAPTURED:',
+                    "PAYMENT CAPTURED:",
                     response
                 )
             }
         )
 
-        // Open Razorpay
+
         rzp.open()
     }
 
-    // Create Razorpay order
-    const appointmentRazorpay = async (appointmentId) => {
 
-        try {
+    // ==================================================
+    // CREATE RAZORPAY ORDER
+    // ==================================================
 
-            console.log(
-                'Creating Razorpay order for:',
-                appointmentId
-            )
+    const appointmentRazorpay =
+        async (
+            appointmentId
+        ) => {
 
-            const { data } = await axios.post(
+            try {
 
-                backendUrl +
-                '/api/user/payment-razorpay',
-
-                {
-                    appointmentId
-                },
-
-                {
-                    headers: {
-                        token
-                    }
-                }
-            )
-
-            console.log(
-                'RAZORPAY ORDER RESPONSE:',
-                data
-            )
-
-            if (data.success) {
-
-                initPay(data.order)
-
-            } else {
-
-                toast.error(
-                    data.message ||
-                    'Unable to create payment order'
+                console.log(
+                    "Creating Razorpay order..."
                 )
-            }
 
-        } catch (error) {
-
-            console.error(
-                'RAZORPAY ORDER ERROR:',
-                error.response?.data ||
-                error
-            )
-
-            toast.error(
-
-                error.response?.data?.message ||
-
-                error.message ||
-
-                'Unable to start Razorpay payment'
-            )
-        }
-    }
-
-    // Stripe payment
-    const appointmentStripe = async (appointmentId) => {
-
-        try {
-
-            const { data } = await axios.post(
-
-                backendUrl +
-                '/api/user/payment-stripe',
-
-                {
-                    appointmentId
-                },
-
-                {
-                    headers: {
-                        token
-                    }
-                }
-            )
-
-            if (data.success) {
 
                 const {
-                    session_url
-                } = data
+                    data
+                } = await axios.post(
 
-                window.location.replace(
-                    session_url
+                    backendUrl +
+                    '/api/user/payment-razorpay',
+
+                    {
+                        appointmentId
+                    },
+
+                    {
+                        headers: {
+                            token
+                        }
+                    }
                 )
 
-            } else {
+
+                console.log(
+                    "RAZORPAY ORDER RESPONSE:",
+                    data
+                )
+
+
+                if (
+                    data.success
+                ) {
+
+                    initPay(
+                        data.order
+                    )
+
+                } else {
+
+                    toast.error(
+                        data.message ||
+                        "Unable to create Razorpay order"
+                    )
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "CREATE RAZORPAY ORDER ERROR:",
+                    error.response?.data ||
+                    error
+                )
 
                 toast.error(
-                    data.message
+
+                    error.response?.data?.message ||
+
+                    error.message ||
+
+                    "Unable to start payment"
                 )
             }
-
-        } catch (error) {
-
-            console.error(
-                'STRIPE ERROR:',
-                error.response?.data ||
-                error
-            )
-
-            toast.error(
-                error.response?.data?.message ||
-                error.message
-            )
-        }
-    }
-
-    useEffect(() => {
-
-        if (token) {
-            getUserAppointments()
         }
 
-    }, [token])
+
+    // ==================================================
+    // STRIPE
+    // ==================================================
+
+    const appointmentStripe =
+        async (
+            appointmentId
+        ) => {
+
+            try {
+
+                const {
+                    data
+                } = await axios.post(
+
+                    backendUrl +
+                    '/api/user/payment-stripe',
+
+                    {
+                        appointmentId
+                    },
+
+                    {
+                        headers: {
+                            token
+                        }
+                    }
+                )
+
+
+                if (
+                    data.success
+                ) {
+
+                    window.location.replace(
+                        data.session_url
+                    )
+
+                } else {
+
+                    toast.error(
+                        data.message
+                    )
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "STRIPE ERROR:",
+                    error.response?.data ||
+                    error
+                )
+
+                toast.error(
+                    error.response?.data?.message ||
+                    error.message
+                )
+            }
+        }
+
+
+    useEffect(
+        () => {
+
+            if (token) {
+                getUserAppointments()
+            }
+
+        },
+        [token]
+    )
+
 
     return (
 
@@ -523,10 +679,14 @@ const MyAppointments = () => {
                 My appointments
             </p>
 
+
             <div>
 
                 {appointments.map(
-                    (item, index) => (
+                    (
+                        item,
+                        index
+                    ) => (
 
                         <div
                             key={index}
@@ -537,20 +697,27 @@ const MyAppointments = () => {
 
                                 <img
                                     className='w-36 bg-[#EAEFFF]'
-                                    src={item.docData.image}
+                                    src={
+                                        item.docData.image
+                                    }
                                     alt=""
                                 />
 
                             </div>
 
+
                             <div className='flex-1 text-sm text-[#5E5E5E]'>
 
                                 <p className='text-[#262626] text-base font-semibold'>
-                                    {item.docData.name}
+                                    {
+                                        item.docData.name
+                                    }
                                 </p>
 
                                 <p>
-                                    {item.docData.speciality}
+                                    {
+                                        item.docData.speciality
+                                    }
                                 </p>
 
                                 <p className='text-[#464646] font-medium mt-1'>
@@ -558,11 +725,15 @@ const MyAppointments = () => {
                                 </p>
 
                                 <p>
-                                    {item.docData.address.line1}
+                                    {
+                                        item.docData.address.line1
+                                    }
                                 </p>
 
                                 <p>
-                                    {item.docData.address.line2}
+                                    {
+                                        item.docData.address.line2
+                                    }
                                 </p>
 
                                 <p className='mt-1'>
@@ -573,23 +744,30 @@ const MyAppointments = () => {
 
                                     {' '}
 
-                                    {slotDateFormat(
-                                        item.slotDate
-                                    )}
+                                    {
+                                        slotDateFormat(
+                                            item.slotDate
+                                        )
+                                    }
 
                                     {' | '}
 
-                                    {item.slotTime}
+                                    {
+                                        item.slotTime
+                                    }
 
                                 </p>
 
                             </div>
 
+
                             <div></div>
+
 
                             <div className='flex flex-col gap-2 justify-end text-sm text-center'>
 
-                                {!item.cancelled &&
+                                {
+                                    !item.cancelled &&
                                     !item.payment &&
                                     !item.isCompleted &&
                                     payment !== item._id && (
@@ -604,10 +782,12 @@ const MyAppointments = () => {
                                         >
                                             Pay Online
                                         </button>
+                                    )
+                                }
 
-                                    )}
 
-                                {!item.cancelled &&
+                                {
+                                    !item.cancelled &&
                                     !item.payment &&
                                     !item.isCompleted &&
                                     payment === item._id && (
@@ -618,20 +798,24 @@ const MyAppointments = () => {
                                                     item._id
                                                 )
                                             }
-                                            className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'
+                                            className='text-[#696969] sm:min-w-48 py-2 border rounded flex items-center justify-center'
                                         >
 
                                             <img
                                                 className='max-w-20 max-h-5'
-                                                src={assets.stripe_logo}
+                                                src={
+                                                    assets.stripe_logo
+                                                }
                                                 alt=""
                                             />
 
                                         </button>
+                                    )
+                                }
 
-                                    )}
 
-                                {!item.cancelled &&
+                                {
+                                    !item.cancelled &&
                                     !item.payment &&
                                     !item.isCompleted &&
                                     payment === item._id && (
@@ -642,20 +826,24 @@ const MyAppointments = () => {
                                                     item._id
                                                 )
                                             }
-                                            className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-gray-100 hover:text-white transition-all duration-300 flex items-center justify-center'
+                                            className='text-[#696969] sm:min-w-48 py-2 border rounded flex items-center justify-center'
                                         >
 
                                             <img
                                                 className='max-w-20 max-h-5'
-                                                src={assets.razorpay_logo}
+                                                src={
+                                                    assets.razorpay_logo
+                                                }
                                                 alt=""
                                             />
 
                                         </button>
+                                    )
+                                }
 
-                                    )}
 
-                                {!item.cancelled &&
+                                {
+                                    !item.cancelled &&
                                     item.payment &&
                                     !item.isCompleted && (
 
@@ -664,20 +852,24 @@ const MyAppointments = () => {
                                         >
                                             Paid
                                         </button>
+                                    )
+                                }
 
-                                    )}
 
-                                {item.isCompleted && (
+                                {
+                                    item.isCompleted && (
 
-                                    <button
-                                        className='sm:min-w-48 py-2 border border-green-500 rounded text-green-500'
-                                    >
-                                        Completed
-                                    </button>
+                                        <button
+                                            className='sm:min-w-48 py-2 border border-green-500 rounded text-green-500'
+                                        >
+                                            Completed
+                                        </button>
+                                    )
+                                }
 
-                                )}
 
-                                {!item.cancelled &&
+                                {
+                                    !item.cancelled &&
                                     !item.isCompleted && (
 
                                         <button
@@ -690,10 +882,12 @@ const MyAppointments = () => {
                                         >
                                             Cancel appointment
                                         </button>
+                                    )
+                                }
 
-                                    )}
 
-                                {item.cancelled &&
+                                {
+                                    item.cancelled &&
                                     !item.isCompleted && (
 
                                         <button
@@ -701,13 +895,12 @@ const MyAppointments = () => {
                                         >
                                             Appointment cancelled
                                         </button>
-
-                                    )}
+                                    )
+                                }
 
                             </div>
 
                         </div>
-
                     )
                 )}
 
@@ -716,5 +909,6 @@ const MyAppointments = () => {
         </div>
     )
 }
+
 
 export default MyAppointments

@@ -10,168 +10,496 @@ import userModel from "../models/userModel.js";
 const loginAdmin = async (req, res) => {
     try {
 
-        const { email, password } = req.body
+        const { email, password } = req.body;
 
-        if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign(email + password, process.env.JWT_SECRET)
-            res.json({ success: true, token })
+        if (
+            email === process.env.ADMIN_EMAIL &&
+            password === process.env.ADMIN_PASSWORD
+        ) {
+
+            const token = jwt.sign(
+                email + password,
+                process.env.JWT_SECRET
+            );
+
+            return res.json({
+                success: true,
+                token
+            });
+
         } else {
-            res.json({ success: false, message: "Invalid credentials" })
+
+            return res.json({
+                success: false,
+                message: "Invalid credentials"
+            });
         }
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+
+        console.error("ADMIN LOGIN ERROR:", error);
+
+        return res.json({
+            success: false,
+            message: error.message
+        });
     }
+};
 
-}
 
-// API to get all appointments list
+// API to get all appointments
 const appointmentsAdmin = async (req, res) => {
+
     try {
 
-        const appointments = await appointmentModel.find({})
-        res.json({ success: true, appointments })
+        const appointments =
+            await appointmentModel.find({});
+
+        res.json({
+            success: true,
+            appointments
+        });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
-    }
 
-}
+        console.error("ADMIN APPOINTMENTS ERROR:", error);
+
+        res.json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 
 // API for appointment cancellation
 const appointmentCancel = async (req, res) => {
+
     try {
 
-        const { appointmentId } = req.body
-        await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true })
+        const { appointmentId } = req.body;
 
-        res.json({ success: true, message: 'Appointment Cancelled' })
+        await appointmentModel.findByIdAndUpdate(
+            appointmentId,
+            {
+                cancelled: true
+            }
+        );
+
+        res.json({
+            success: true,
+            message: "Appointment Cancelled"
+        });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+
+        console.error("ADMIN CANCEL ERROR:", error);
+
+        res.json({
+            success: false,
+            message: error.message
+        });
     }
+};
 
-}
 
-// API for adding Doctor
+// ======================================================
+// ADD DOCTOR
+// ======================================================
+
 const addDoctor = async (req, res) => {
 
     try {
 
-        const { name, email, password, speciality, degree, experience, about, fees, address } = req.body
-        const imageFile = req.file
+        console.log("==============================");
+        console.log("ADD DOCTOR REQUEST");
+        console.log("Body:", req.body);
+        console.log(
+            "File exists:",
+            !!req.file
+        );
 
-        // checking for all data to add doctor
-        if (!name || !email || !password || !speciality || !degree || !experience || !about || !fees || !address) {
-            return res.json({ success: false, message: "Missing Details" })
+        if (req.file) {
+
+            console.log(
+                "File name:",
+                req.file.originalname
+            );
+
+            console.log(
+                "File size:",
+                req.file.size
+            );
+
+            console.log(
+                "File type:",
+                req.file.mimetype
+            );
         }
 
-        // validating email format
-        if (!validator.isEmail(email)) {
-            return res.json({ success: false, message: "Please enter a valid email" })
-        }
+        console.log("==============================");
 
-        // validating strong password
-        if (password.length < 8) {
-            return res.json({ success: false, message: "Please enter a strong password" })
-        }
 
-        // hashing user password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt)
-
-        // upload image to cloudinary
-        const imageUpload = await cloudinary.uploader.upload(imageFile.path, { resource_type: "image" })
-        const imageUrl = imageUpload.secure_url
-
-        const doctorData = {
+        const {
             name,
             email,
-            image: imageUrl,
-            password: hashedPassword,
+            password,
             speciality,
             degree,
             experience,
             about,
             fees,
-            address: JSON.parse(address),
-            date: Date.now()
+            address
+        } = req.body;
+
+
+        const imageFile = req.file;
+
+
+        // Check all fields
+        if (
+            !name ||
+            !email ||
+            !password ||
+            !speciality ||
+            !degree ||
+            !experience ||
+            !about ||
+            fees === undefined ||
+            fees === null ||
+            !address
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message: "Missing Details"
+            });
         }
 
-        const newDoctor = new doctorModel(doctorData)
-        await newDoctor.save()
-        res.json({ success: true, message: 'Doctor Added' })
+
+        // Check image
+        if (!imageFile) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Doctor image is required. Please select an image file."
+            });
+        }
+
+
+        // Validate email
+        if (!validator.isEmail(email)) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Please enter a valid email"
+            });
+        }
+
+
+        // Validate password
+        if (password.length < 8) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Please enter a strong password"
+            });
+        }
+
+
+        // Check Cloudinary configuration
+        if (
+            !process.env.CLOUDINARY_NAME ||
+            !process.env.CLOUDINARY_API_KEY ||
+            !process.env.CLOUDINARY_SECRET_KEY
+        ) {
+
+            console.error(
+                "Cloudinary environment variables are missing"
+            );
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Cloudinary configuration is missing on Render"
+            });
+        }
+
+
+        // Check duplicate email
+        const existingDoctor =
+            await doctorModel.findOne({
+                email
+            });
+
+
+        if (existingDoctor) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Doctor with this email already exists"
+            });
+        }
+
+
+        // Hash password
+        const salt =
+            await bcrypt.genSalt(10);
+
+        const hashedPassword =
+            await bcrypt.hash(
+                password,
+                salt
+            );
+
+
+        // ------------------------------------------------
+        // Upload image to Cloudinary using buffer
+        // ------------------------------------------------
+
+        const uploadImage =
+            () => new Promise(
+                (resolve, reject) => {
+
+                    const stream =
+                        cloudinary.uploader.upload_stream(
+                            {
+                                resource_type: "image",
+                                folder: "prescripto/doctors"
+                            },
+                            (error, result) => {
+
+                                if (error) {
+                                    reject(error);
+                                } else {
+                                    resolve(result);
+                                }
+                            }
+                        );
+
+                    stream.end(
+                        imageFile.buffer
+                    );
+                }
+            );
+
+
+        console.log(
+            "Uploading doctor image to Cloudinary..."
+        );
+
+
+        const imageUpload =
+            await uploadImage();
+
+
+        if (
+            !imageUpload ||
+            !imageUpload.secure_url
+        ) {
+
+            return res.status(500).json({
+                success: false,
+                message:
+                    "Cloudinary image upload failed"
+            });
+        }
+
+
+        console.log(
+            "Cloudinary upload successful:",
+            imageUpload.secure_url
+        );
+
+
+        // Parse address safely
+        let parsedAddress;
+
+        try {
+
+            parsedAddress =
+                typeof address === "string"
+                    ? JSON.parse(address)
+                    : address;
+
+        } catch (error) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Invalid address format"
+            });
+        }
+
+
+        // Create doctor
+        const doctorData = {
+
+            name,
+
+            email,
+
+            image:
+                imageUpload.secure_url,
+
+            password:
+                hashedPassword,
+
+            speciality,
+
+            degree,
+
+            experience,
+
+            about,
+
+            fees:
+                Number(fees),
+
+            address:
+                parsedAddress,
+
+            date:
+                Date.now()
+        };
+
+
+        const newDoctor =
+            new doctorModel(
+                doctorData
+            );
+
+
+        await newDoctor.save();
+
+
+        console.log(
+            "Doctor successfully added:",
+            email
+        );
+
+
+        return res.json({
+
+            success: true,
+
+            message:
+                "Doctor Added"
+
+        });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
-    }
-}
 
-// API to get all doctors list for admin panel
+        console.error(
+            "=============================="
+        );
+
+        console.error(
+            "ADD DOCTOR ERROR"
+        );
+
+        console.error(error);
+
+        console.error(
+            "=============================="
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                error?.message ||
+                "Failed to add doctor"
+
+        });
+    }
+};
+
+
+// API to get all doctors
 const allDoctors = async (req, res) => {
+
     try {
 
-        const doctors = await doctorModel.find({}).select('-password')
-        res.json({ success: true, doctors })
+        const doctors =
+            await doctorModel
+                .find({})
+                .select("-password");
+
+        res.json({
+            success: true,
+            doctors
+        });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+
+        console.error(
+            "ALL DOCTORS ERROR:",
+            error
+        );
+
+        res.json({
+            success: false,
+            message: error.message
+        });
     }
-}
+};
 
-// API to remove doctor
-const removeDoctor = async (req, res) => {
-    try {
 
-        const { docId } = req.body
-
-        if (!docId) {
-            return res.json({ success: false, message: "Doctor ID is required" })
-        }
-
-        const doctor = await doctorModel.findById(docId)
-
-        if (!doctor) {
-            return res.json({ success: false, message: "Doctor not found" })
-        }
-
-        await doctorModel.findByIdAndDelete(docId)
-
-        res.json({ success: true, message: "Doctor Removed" })
-
-    } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
-    }
-}
-
-// API to get dashboard data for admin panel
+// API to get dashboard data
 const adminDashboard = async (req, res) => {
+
     try {
 
-        const doctors = await doctorModel.find({})
-        const users = await userModel.find({})
-        const appointments = await appointmentModel.find({})
+        const doctors =
+            await doctorModel.find({});
+
+        const users =
+            await userModel.find({});
+
+        const appointments =
+            await appointmentModel.find({});
 
         const dashData = {
-            doctors: doctors.length,
-            appointments: appointments.length,
-            patients: users.length,
-            latestAppointments: appointments.reverse()
-        }
 
-        res.json({ success: true, dashData })
+            doctors:
+                doctors.length,
+
+            appointments:
+                appointments.length,
+
+            patients:
+                users.length,
+
+            latestAppointments:
+                appointments.reverse()
+        };
+
+        res.json({
+            success: true,
+            dashData
+        });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+
+        console.error(
+            "ADMIN DASHBOARD ERROR:",
+            error
+        );
+
+        res.json({
+            success: false,
+            message: error.message
+        });
     }
-}
+};
+
 
 export {
     loginAdmin,
@@ -179,6 +507,5 @@ export {
     appointmentCancel,
     addDoctor,
     allDoctors,
-    removeDoctor,
     adminDashboard
-}
+};

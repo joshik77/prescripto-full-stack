@@ -1,26 +1,32 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import validator from "validator";
-import crypto from "crypto";
 import userModel from "../models/userModel.js";
 import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
-import { v2 as cloudinary } from 'cloudinary'
-import stripe from "stripe";
-import razorpay from 'razorpay';
+import { v2 as cloudinary } from "cloudinary";
+import Stripe from "stripe";
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
-// Gateway Initialize
-const stripeInstance = new stripe(
+// ======================================================
+// PAYMENT GATEWAYS
+// ======================================================
+
+const stripeInstance = new Stripe(
     process.env.STRIPE_SECRET_KEY
-)
+);
 
-const razorpayInstance = new razorpay({
+const razorpayInstance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-})
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+});
 
 
-// API to register user
+// ======================================================
+// REGISTER USER
+// ======================================================
+
 const registerUser = async (req, res) => {
 
     try {
@@ -32,45 +38,60 @@ const registerUser = async (req, res) => {
         } = req.body;
 
         if (!name || !email || !password) {
+
             return res.json({
                 success: false,
-                message: 'Missing Details'
-            })
+                message: "Missing Details"
+            });
         }
 
         if (!validator.isEmail(email)) {
+
             return res.json({
                 success: false,
                 message: "Please enter a valid email"
-            })
+            });
         }
 
         if (password.length < 8) {
+
             return res.json({
                 success: false,
                 message: "Please enter a strong password"
-            })
+            });
         }
 
-        const salt = await bcrypt.genSalt(10);
+        const existingUser =
+            await userModel.findOne({ email });
+
+        if (existingUser) {
+
+            return res.json({
+                success: false,
+                message: "User already exists"
+            });
+        }
+
+        const salt =
+            await bcrypt.genSalt(10);
 
         const hashedPassword =
             await bcrypt.hash(
                 password,
                 salt
-            )
+            );
 
         const userData = {
             name,
             email,
-            password: hashedPassword,
-        }
+            password: hashedPassword
+        };
 
         const newUser =
-            new userModel(userData)
+            new userModel(userData);
 
         const user =
-            await newUser.save()
+            await newUser.save();
 
         const token =
             jwt.sign(
@@ -78,26 +99,32 @@ const registerUser = async (req, res) => {
                     id: user._id
                 },
                 process.env.JWT_SECRET
-            )
+            );
 
         res.json({
             success: true,
             token
-        })
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "REGISTER USER ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
-// API to login user
+// ======================================================
+// LOGIN USER
+// ======================================================
+
 const loginUser = async (req, res) => {
 
     try {
@@ -110,89 +137,99 @@ const loginUser = async (req, res) => {
         const user =
             await userModel.findOne({
                 email
-            })
+            });
 
         if (!user) {
 
             return res.json({
                 success: false,
                 message: "User does not exist"
-            })
+            });
         }
 
         const isMatch =
             await bcrypt.compare(
                 password,
                 user.password
-            )
+            );
 
-        if (isMatch) {
+        if (!isMatch) {
 
-            const token =
-                jwt.sign(
-                    {
-                        id: user._id
-                    },
-                    process.env.JWT_SECRET
-                )
-
-            res.json({
-                success: true,
-                token
-            })
-
-        } else {
-
-            res.json({
+            return res.json({
                 success: false,
                 message: "Invalid credentials"
-            })
+            });
         }
+
+        const token =
+            jwt.sign(
+                {
+                    id: user._id
+                },
+                process.env.JWT_SECRET
+            );
+
+        res.json({
+            success: true,
+            token
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "LOGIN USER ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
-// API to get user profile data
+// ======================================================
+// GET PROFILE
+// ======================================================
+
 const getProfile = async (req, res) => {
 
     try {
 
         const {
             userId
-        } = req.body
+        } = req.body;
 
         const userData =
             await userModel
                 .findById(userId)
-                .select('-password')
+                .select("-password");
 
         res.json({
             success: true,
             userData
-        })
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "GET PROFILE ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
-// API to update user profile
+// ======================================================
+// UPDATE PROFILE
+// ======================================================
+
 const updateProfile = async (req, res) => {
 
     try {
@@ -204,16 +241,39 @@ const updateProfile = async (req, res) => {
             address,
             dob,
             gender
-        } = req.body
+        } = req.body;
 
-        const imageFile = req.file
+        const imageFile =
+            req.file;
 
-        if (!name || !phone || !dob || !gender) {
+        if (
+            !name ||
+            !phone ||
+            !dob ||
+            !gender
+        ) {
 
             return res.json({
                 success: false,
                 message: "Data Missing"
-            })
+            });
+        }
+
+        let parsedAddress;
+
+        try {
+
+            parsedAddress =
+                typeof address === "string"
+                    ? JSON.parse(address)
+                    : address;
+
+        } catch (error) {
+
+            return res.json({
+                success: false,
+                message: "Invalid address format"
+            });
         }
 
         await userModel.findByIdAndUpdate(
@@ -221,11 +281,11 @@ const updateProfile = async (req, res) => {
             {
                 name,
                 phone,
-                address: JSON.parse(address),
+                address: parsedAddress,
                 dob,
                 gender
             }
-        )
+        );
 
         if (imageFile) {
 
@@ -235,37 +295,43 @@ const updateProfile = async (req, res) => {
                     {
                         resource_type: "image"
                     }
-                )
+                );
 
             const imageURL =
-                imageUpload.secure_url
+                imageUpload.secure_url;
 
             await userModel.findByIdAndUpdate(
                 userId,
                 {
                     image: imageURL
                 }
-            )
+            );
         }
 
         res.json({
             success: true,
-            message: 'Profile Updated'
-        })
+            message: "Profile Updated"
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "UPDATE PROFILE ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
-// API to book appointment
+// ======================================================
+// BOOK APPOINTMENT
+// ======================================================
+
 const bookAppointment = async (req, res) => {
 
     try {
@@ -275,23 +341,31 @@ const bookAppointment = async (req, res) => {
             docId,
             slotDate,
             slotTime
-        } = req.body
+        } = req.body;
 
         const docData =
             await doctorModel
                 .findById(docId)
-                .select("-password")
+                .select("-password");
+
+        if (!docData) {
+
+            return res.json({
+                success: false,
+                message: "Doctor not found"
+            });
+        }
 
         if (!docData.available) {
 
             return res.json({
                 success: false,
-                message: 'Doctor Not Available'
-            })
+                message: "Doctor Not Available"
+            });
         }
 
         let slots_booked =
-            docData.slots_booked
+            docData.slots_booked || {};
 
         if (slots_booked[slotDate]) {
 
@@ -302,74 +376,86 @@ const bookAppointment = async (req, res) => {
 
                 return res.json({
                     success: false,
-                    message: 'Slot Not Available'
-                })
+                    message: "Slot Not Available"
+                });
 
             } else {
 
                 slots_booked[slotDate]
-                    .push(slotTime)
+                    .push(slotTime);
             }
 
         } else {
 
-            slots_booked[slotDate] = []
-
-            slots_booked[slotDate]
-                .push(slotTime)
+            slots_booked[slotDate] = [
+                slotTime
+            ];
         }
 
         const userData =
             await userModel
                 .findById(userId)
-                .select("-password")
-
-        delete docData.slots_booked
+                .select("-password");
 
         const appointmentData = {
 
             userId,
+
             docId,
+
             userData,
+
             docData,
-            amount: docData.fees,
+
+            amount:
+                Number(docData.fees),
+
             slotTime,
+
             slotDate,
-            date: Date.now()
-        }
+
+            date:
+                Date.now()
+        };
 
         const newAppointment =
             new appointmentModel(
                 appointmentData
-            )
+            );
 
-        await newAppointment.save()
+        await newAppointment.save();
 
         await doctorModel.findByIdAndUpdate(
             docId,
             {
                 slots_booked
             }
-        )
+        );
 
         res.json({
             success: true,
-            message: 'Appointment Booked'
-        })
+            message: "Appointment Booked"
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "BOOK APPOINTMENT ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
-// API to cancel appointment
+// ======================================================
+// CANCEL APPOINTMENT
+// ======================================================
+
 const cancelAppointment = async (req, res) => {
 
     try {
@@ -377,18 +463,19 @@ const cancelAppointment = async (req, res) => {
         const {
             userId,
             appointmentId
-        } = req.body
+        } = req.body;
 
         const appointmentData =
-            await appointmentModel
-                .findById(appointmentId)
+            await appointmentModel.findById(
+                appointmentId
+            );
 
         if (!appointmentData) {
 
             return res.json({
                 success: false,
-                message: 'Appointment not found'
-            })
+                message: "Appointment not found"
+            });
         }
 
         if (
@@ -398,8 +485,8 @@ const cancelAppointment = async (req, res) => {
 
             return res.json({
                 success: false,
-                message: 'Unauthorized action'
-            })
+                message: "Unauthorized action"
+            });
         }
 
         await appointmentModel.findByIdAndUpdate(
@@ -407,79 +494,96 @@ const cancelAppointment = async (req, res) => {
             {
                 cancelled: true
             }
-        )
+        );
 
         const {
             docId,
             slotDate,
             slotTime
-        } = appointmentData
+        } = appointmentData;
 
         const doctorData =
-            await doctorModel.findById(docId)
+            await doctorModel.findById(
+                docId
+            );
 
-        let slots_booked =
-            doctorData.slots_booked
+        if (doctorData) {
 
-        slots_booked[slotDate] =
-            slots_booked[slotDate]
-                .filter(
-                    e => e !== slotTime
-                )
+            let slots_booked =
+                doctorData.slots_booked || {};
 
-        await doctorModel.findByIdAndUpdate(
-            docId,
-            {
-                slots_booked
+            if (slots_booked[slotDate]) {
+
+                slots_booked[slotDate] =
+                    slots_booked[slotDate]
+                        .filter(
+                            e => e !== slotTime
+                        );
+
+                await doctorModel.findByIdAndUpdate(
+                    docId,
+                    {
+                        slots_booked
+                    }
+                );
             }
-        )
+        }
 
         res.json({
             success: true,
-            message: 'Appointment Cancelled'
-        })
+            message: "Appointment Cancelled"
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "CANCEL APPOINTMENT ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
-// API to get user appointments
+// ======================================================
+// LIST USER APPOINTMENTS
+// ======================================================
+
 const listAppointment = async (req, res) => {
 
     try {
 
         const {
             userId
-        } = req.body
+        } = req.body;
 
         const appointments =
             await appointmentModel.find({
                 userId
-            })
+            });
 
         res.json({
             success: true,
             appointments
-        })
+        });
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "LIST APPOINTMENTS ERROR:",
+            error
+        );
 
         res.json({
             success: false,
             message: error.message
-        })
+        });
     }
-}
+};
 
 
 // ======================================================
@@ -493,65 +597,100 @@ const paymentRazorpay = async (req, res) => {
         const {
             userId,
             appointmentId
-        } = req.body
+        } = req.body;
+
 
         console.log(
-            '=============================='
-        )
+            "===================================="
+        );
 
         console.log(
-            'RAZORPAY CREATE ORDER'
-        )
+            "RAZORPAY CREATE ORDER"
+        );
 
         console.log(
-            'User ID:',
+            "User:",
             userId
-        )
+        );
 
         console.log(
-            'Appointment ID:',
+            "Appointment:",
             appointmentId
-        )
+        );
 
         console.log(
-            'Razorpay Key exists:',
-            !!process.env.RAZORPAY_KEY_ID
-        )
-
-        console.log(
-            'Razorpay Secret exists:',
-            !!process.env.RAZORPAY_KEY_SECRET
-        )
-
-        console.log(
-            '=============================='
-        )
+            "===================================="
+        );
 
 
-        if (!process.env.RAZORPAY_KEY_ID) {
+        // ------------------------------------------------
+        // CHECK RAZORPAY CONFIGURATION
+        // ------------------------------------------------
+
+        if (
+            !process.env.RAZORPAY_KEY_ID
+        ) {
+
+            console.error(
+                "RAZORPAY_KEY_ID IS MISSING"
+            );
 
             return res.status(500).json({
                 success: false,
                 message:
-                    'RAZORPAY_KEY_ID is missing on Render'
-            })
+                    "RAZORPAY_KEY_ID is missing on Render"
+            });
         }
 
 
-        if (!process.env.RAZORPAY_KEY_SECRET) {
+        if (
+            !process.env.RAZORPAY_KEY_SECRET
+        ) {
+
+            console.error(
+                "RAZORPAY_KEY_SECRET IS MISSING"
+            );
 
             return res.status(500).json({
                 success: false,
                 message:
-                    'RAZORPAY_KEY_SECRET is missing on Render'
-            })
+                    "RAZORPAY_KEY_SECRET is missing on Render"
+            });
         }
 
+
+        // ------------------------------------------------
+        // CHECK REQUEST
+        // ------------------------------------------------
+
+        if (!userId) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "User ID is missing"
+            });
+        }
+
+
+        if (!appointmentId) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Appointment ID is missing"
+            });
+        }
+
+
+        // ------------------------------------------------
+        // FIND APPOINTMENT
+        // ------------------------------------------------
 
         const appointmentData =
             await appointmentModel.findById(
                 appointmentId
-            )
+            );
 
 
         if (!appointmentData) {
@@ -559,10 +698,14 @@ const paymentRazorpay = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message:
-                    'Appointment not found'
-            })
+                    "Appointment not found"
+            });
         }
 
+
+        // ------------------------------------------------
+        // VERIFY USER
+        // ------------------------------------------------
 
         if (
             String(appointmentData.userId) !==
@@ -572,91 +715,144 @@ const paymentRazorpay = async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message:
-                    'Unauthorized action'
-            })
+                    "Unauthorized payment request"
+            });
         }
 
 
-        if (appointmentData.cancelled) {
-
-            return res.json({
-                success: false,
-                message:
-                    'Appointment has been cancelled'
-            })
-        }
-
-
-        if (appointmentData.payment) {
-
-            return res.json({
-                success: false,
-                message:
-                    'Appointment is already paid'
-            })
-        }
-
-
-        const amount =
-            Math.round(
-                Number(appointmentData.amount) * 100
-            )
-
+        // ------------------------------------------------
+        // CHECK CANCELLED
+        // ------------------------------------------------
 
         if (
-            !Number.isFinite(amount) ||
-            amount <= 0
+            appointmentData.cancelled
         ) {
 
             return res.status(400).json({
                 success: false,
                 message:
-                    'Invalid appointment amount'
-            })
+                    "Appointment is cancelled"
+            });
         }
 
+
+        // ------------------------------------------------
+        // CHECK ALREADY PAID
+        // ------------------------------------------------
+
+        if (
+            appointmentData.payment
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Appointment is already paid"
+            });
+        }
+
+
+        // ------------------------------------------------
+        // CALCULATE AMOUNT
+        // ------------------------------------------------
+
+        const appointmentAmount =
+            Number(
+                appointmentData.amount
+            );
+
+
+        if (
+            !Number.isFinite(
+                appointmentAmount
+            ) ||
+            appointmentAmount <= 0
+        ) {
+
+            console.error(
+                "INVALID APPOINTMENT AMOUNT:",
+                appointmentData.amount
+            );
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Invalid appointment amount"
+            });
+        }
+
+
+        const amount =
+            Math.round(
+                appointmentAmount * 100
+            );
+
+
+        // ------------------------------------------------
+        // CURRENCY
+        // ------------------------------------------------
 
         const currency =
             (
                 process.env.CURRENCY ||
-                'INR'
+                "INR"
             )
                 .trim()
-                .toUpperCase()
+                .toUpperCase();
 
 
-        const options = {
+        // ------------------------------------------------
+        // RAZORPAY ORDER
+        // ------------------------------------------------
 
-            amount,
+        const orderOptions = {
 
-            currency,
+            amount:
+
+                amount,
+
+            currency:
+
+                currency,
 
             receipt:
-                String(appointmentId)
-        }
+
+                String(
+                    appointmentId
+                )
+        };
 
 
         console.log(
-            'Creating Razorpay order:',
-            options
-        )
+            "Razorpay order options:",
+            orderOptions
+        );
 
 
         const order =
             await razorpayInstance
                 .orders
-                .create(options)
+                .create(
+                    orderOptions
+                );
 
 
         console.log(
-            'RAZORPAY ORDER CREATED:',
+            "Razorpay order successfully created:",
             {
-                id: order.id,
-                amount: order.amount,
-                currency: order.currency,
-                receipt: order.receipt
+                id:
+                    order.id,
+
+                amount:
+                    order.amount,
+
+                currency:
+                    order.currency,
+
+                receipt:
+                    order.receipt
             }
-        )
+        );
 
 
         return res.json({
@@ -665,23 +861,26 @@ const paymentRazorpay = async (req, res) => {
 
             order
 
-        })
+        });
+
 
     } catch (error) {
 
         console.error(
-            '=============================='
-        )
+            "===================================="
+        );
 
         console.error(
-            'RAZORPAY ORDER CREATION ERROR'
-        )
-
-        console.error(error)
+            "RAZORPAY CREATE ORDER ERROR"
+        );
 
         console.error(
-            '=============================='
-        )
+            error
+        );
+
+        console.error(
+            "===================================="
+        );
 
 
         return res.status(500).json({
@@ -689,14 +888,18 @@ const paymentRazorpay = async (req, res) => {
             success: false,
 
             message:
-                error?.error?.description ||
-                error?.description ||
-                error?.message ||
-                'Unable to create Razorpay order'
 
-        })
+                error?.error?.description ||
+
+                error?.description ||
+
+                error?.message ||
+
+                "Razorpay order creation failed"
+
+        });
     }
-}
+};
 
 
 // ======================================================
@@ -712,31 +915,28 @@ const verifyRazorpay = async (req, res) => {
             razorpay_order_id,
             razorpay_payment_id,
             razorpay_signature
-        } = req.body
+        } = req.body;
 
 
-        console.log(
-            '=============================='
-        )
+        // ------------------------------------------------
+        // CHECK SECRET
+        // ------------------------------------------------
 
-        console.log(
-            'RAZORPAY VERIFY PAYMENT'
-        )
+        if (
+            !process.env.RAZORPAY_KEY_SECRET
+        ) {
 
-        console.log(
-            'Order ID:',
-            razorpay_order_id
-        )
+            return res.status(500).json({
+                success: false,
+                message:
+                    "RAZORPAY_KEY_SECRET is missing on Render"
+            });
+        }
 
-        console.log(
-            'Payment ID:',
-            razorpay_payment_id
-        )
 
-        console.log(
-            '=============================='
-        )
-
+        // ------------------------------------------------
+        // CHECK PAYMENT DATA
+        // ------------------------------------------------
 
         if (
             !razorpay_order_id ||
@@ -749,94 +949,77 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Missing Razorpay verification details'
+                    "Missing Razorpay payment verification details"
 
-            })
-        }
-
-
-        if (!process.env.RAZORPAY_KEY_SECRET) {
-
-            return res.status(500).json({
-
-                success: false,
-
-                message:
-                    'RAZORPAY_KEY_SECRET is missing on Render'
-
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Verify Razorpay signature
+        // VERIFY SIGNATURE
         // ------------------------------------------------
 
         const generatedSignature =
             crypto
                 .createHmac(
-                    'sha256',
+                    "sha256",
                     process.env.RAZORPAY_KEY_SECRET
                 )
                 .update(
-                    razorpay_order_id +
-                    '|' +
-                    razorpay_payment_id
+                    `${razorpay_order_id}|${razorpay_payment_id}`
                 )
-                .digest('hex')
+                .digest("hex");
 
 
-        if (
-            generatedSignature !==
-            razorpay_signature
-        ) {
+        const signaturesMatch =
+            generatedSignature ===
+            razorpay_signature;
+
+
+        if (!signaturesMatch) {
 
             console.error(
-                'INVALID RAZORPAY SIGNATURE'
-            )
+                "Razorpay signature verification failed"
+            );
 
             return res.status(400).json({
 
                 success: false,
 
                 message:
-                    'Invalid Razorpay payment signature'
+                    "Payment signature verification failed"
 
-            })
+            });
         }
 
 
-        console.log(
-            'Razorpay signature verified'
-        )
-
-
         // ------------------------------------------------
-        // Fetch order
+        // GET ORDER
         // ------------------------------------------------
 
-        const order =
+        const orderInfo =
             await razorpayInstance
                 .orders
                 .fetch(
                     razorpay_order_id
-                )
+                );
 
 
-        console.log(
-            'RAZORPAY ORDER:',
-            {
-                id: order.id,
-                status: order.status,
-                amount: order.amount,
-                currency: order.currency,
-                receipt: order.receipt
-            }
-        )
+        if (!orderInfo) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Razorpay order not found"
+
+            });
+        }
 
 
         const appointmentId =
-            order.receipt
+            orderInfo.receipt;
 
 
         if (!appointmentId) {
@@ -846,21 +1029,20 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Appointment ID missing from Razorpay order'
+                    "Appointment ID missing from Razorpay order"
 
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Find appointment
+        // GET APPOINTMENT
         // ------------------------------------------------
 
         const appointmentData =
-            await appointmentModel
-                .findById(
-                    appointmentId
-                )
+            await appointmentModel.findById(
+                appointmentId
+            );
 
 
         if (!appointmentData) {
@@ -870,14 +1052,14 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Appointment not found'
+                    "Appointment not found"
 
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Verify user owns appointment
+        // VERIFY USER
         // ------------------------------------------------
 
         if (
@@ -890,42 +1072,76 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Unauthorized payment verification'
+                    "Unauthorized payment verification"
 
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Fetch payment
+        // VERIFY ORDER AMOUNT
         // ------------------------------------------------
 
-        const payment =
+        const expectedAmount =
+            Math.round(
+                Number(
+                    appointmentData.amount
+                ) * 100
+            );
+
+
+        if (
+            Number(orderInfo.amount) !==
+            expectedAmount
+        ) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Payment amount mismatch"
+
+            });
+        }
+
+
+        // ------------------------------------------------
+        // FETCH PAYMENT
+        // ------------------------------------------------
+
+        const paymentInfo =
             await razorpayInstance
                 .payments
                 .fetch(
                     razorpay_payment_id
-                )
+                );
 
 
         console.log(
-            'RAZORPAY PAYMENT:',
+            "Razorpay payment information:",
             {
-                id: payment.id,
-                status: payment.status,
-                amount: payment.amount,
-                currency: payment.currency,
-                order_id: payment.order_id
+                id:
+                    paymentInfo.id,
+
+                order_id:
+                    paymentInfo.order_id,
+
+                amount:
+                    paymentInfo.amount,
+
+                status:
+                    paymentInfo.status
             }
-        )
+        );
 
 
         // ------------------------------------------------
-        // Verify payment belongs to order
+        // VERIFY ORDER ID
         // ------------------------------------------------
 
         if (
-            payment.order_id !==
+            paymentInfo.order_id !==
             razorpay_order_id
         ) {
 
@@ -934,19 +1150,19 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Payment does not belong to this order'
+                    "Payment does not belong to this order"
 
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Verify payment amount
+        // VERIFY PAYMENT AMOUNT
         // ------------------------------------------------
 
         if (
-            Number(payment.amount) !==
-            Number(order.amount)
+            Number(paymentInfo.amount) !==
+            Number(orderInfo.amount)
         ) {
 
             return res.status(400).json({
@@ -954,42 +1170,38 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Payment amount does not match order amount'
+                    "Payment amount mismatch"
 
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Capture payment if authorized
+        // CAPTURE PAYMENT IF AUTHORIZED
         // ------------------------------------------------
 
         if (
-            payment.status ===
-            'authorized'
+            paymentInfo.status ===
+            "authorized"
         ) {
 
             console.log(
-                'Payment authorized. Capturing...'
-            )
+                "Payment authorized. Capturing..."
+            );
 
 
             await razorpayInstance
                 .payments
                 .capture(
                     razorpay_payment_id,
-                    order.amount,
-                    order.currency
-                )
+                    orderInfo.amount,
+                    orderInfo.currency
+                );
 
-
-            console.log(
-                'Payment captured successfully'
-            )
 
         } else if (
-            payment.status !==
-            'captured'
+            paymentInfo.status !==
+            "captured"
         ) {
 
             return res.status(400).json({
@@ -997,42 +1209,57 @@ const verifyRazorpay = async (req, res) => {
                 success: false,
 
                 message:
-                    'Payment is not captured. Current status: ' +
-                    payment.status
+                    `Payment was not captured. Current status: ${paymentInfo.status}`
 
-            })
+            });
         }
 
 
         // ------------------------------------------------
-        // Mark appointment as paid
+        // MARK APPOINTMENT AS PAID
         // ------------------------------------------------
 
-        await appointmentModel
-            .findByIdAndUpdate(
-                appointmentId,
-                {
-                    payment: true
-                }
-            )
+        await appointmentModel.findByIdAndUpdate(
+
+            appointmentId,
+
+            {
+                payment: true
+            },
+
+            {
+                new: true
+            }
+
+        );
 
 
         console.log(
-            '================================'
-        )
+            "===================================="
+        );
 
         console.log(
-            'PAYMENT SUCCESSFULLY COMPLETED'
-        )
+            "RAZORPAY PAYMENT SUCCESS"
+        );
 
         console.log(
-            'Appointment:',
+            "Appointment:",
             appointmentId
-        )
+        );
 
         console.log(
-            '================================'
-        )
+            "Order:",
+            razorpay_order_id
+        );
+
+        console.log(
+            "Payment:",
+            razorpay_payment_id
+        );
+
+        console.log(
+            "===================================="
+        );
 
 
         return res.json({
@@ -1040,25 +1267,28 @@ const verifyRazorpay = async (req, res) => {
             success: true,
 
             message:
-                'Payment Successful'
+                "Payment Successful"
 
-        })
+        });
+
 
     } catch (error) {
 
         console.error(
-            '=============================='
-        )
+            "===================================="
+        );
 
         console.error(
-            'RAZORPAY VERIFICATION ERROR'
-        )
-
-        console.error(error)
+            "RAZORPAY VERIFY ERROR"
+        );
 
         console.error(
-            '=============================='
-        )
+            error
+        );
+
+        console.error(
+            "===================================="
+        );
 
 
         return res.status(500).json({
@@ -1066,38 +1296,42 @@ const verifyRazorpay = async (req, res) => {
             success: false,
 
             message:
+
                 error?.error?.description ||
+
                 error?.description ||
+
                 error?.message ||
-                'Payment verification failed'
 
-        })
+                "Payment verification failed"
+
+        });
     }
-}
+};
 
 
 // ======================================================
-// STRIPE
+// STRIPE PAYMENT
 // ======================================================
 
-// API to make payment using Stripe
 const paymentStripe = async (req, res) => {
 
     try {
 
         const {
             appointmentId
-        } = req.body
+        } = req.body;
 
         const {
             origin
-        } = req.headers
+        } = req.headers;
+
 
         const appointmentData =
-            await appointmentModel
-                .findById(
-                    appointmentId
-                )
+            await appointmentModel.findById(
+                appointmentId
+            );
+
 
         if (
             !appointmentData ||
@@ -1109,38 +1343,49 @@ const paymentStripe = async (req, res) => {
                 success: false,
 
                 message:
-                    'Appointment Cancelled or not found'
+                    "Appointment Cancelled or not found"
 
-            })
+            });
         }
 
 
         const currency =
-            process.env.CURRENCY
-                .toLocaleLowerCase()
+            (
+                process.env.CURRENCY ||
+                "INR"
+            )
+                .toLowerCase();
 
 
-        const line_items = [{
+        const line_items = [
 
-            price_data: {
+            {
 
-                currency,
+                price_data: {
 
-                product_data: {
+                    currency,
 
-                    name:
-                        "Appointment Fees"
+                    product_data: {
+
+                        name:
+                            "Appointment Fees"
+
+                    },
+
+                    unit_amount:
+                        Math.round(
+                            Number(
+                                appointmentData.amount
+                            ) * 100
+                        )
 
                 },
 
-                unit_amount:
-                    appointmentData.amount * 100
+                quantity: 1
 
-            },
+            }
 
-            quantity: 1
-
-        }]
+        ];
 
 
         const session =
@@ -1158,9 +1403,9 @@ const paymentStripe = async (req, res) => {
                     line_items,
 
                     mode:
-                        'payment'
+                        "payment"
 
-                })
+                });
 
 
         res.json({
@@ -1170,11 +1415,15 @@ const paymentStripe = async (req, res) => {
             session_url:
                 session.url
 
-        })
+        });
+
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "STRIPE PAYMENT ERROR:",
+            error
+        );
 
         res.json({
 
@@ -1183,10 +1432,14 @@ const paymentStripe = async (req, res) => {
             message:
                 error.message
 
-        })
+        });
     }
-}
+};
 
+
+// ======================================================
+// VERIFY STRIPE
+// ======================================================
 
 const verifyStripe = async (req, res) => {
 
@@ -1195,27 +1448,33 @@ const verifyStripe = async (req, res) => {
         const {
             appointmentId,
             success
-        } = req.body
+        } = req.body;
 
 
-        if (success === "true") {
+        if (
+            success === "true"
+        ) {
 
             await appointmentModel
                 .findByIdAndUpdate(
+
                     appointmentId,
+
                     {
                         payment: true
                     }
-                )
+
+                );
+
 
             return res.json({
 
                 success: true,
 
                 message:
-                    'Payment Successful'
+                    "Payment Successful"
 
-            })
+            });
         }
 
 
@@ -1224,13 +1483,17 @@ const verifyStripe = async (req, res) => {
             success: false,
 
             message:
-                'Payment Failed'
+                "Payment Failed"
 
-        })
+        });
+
 
     } catch (error) {
 
-        console.log(error)
+        console.error(
+            "VERIFY STRIPE ERROR:",
+            error
+        );
 
         res.json({
 
@@ -1239,22 +1502,37 @@ const verifyStripe = async (req, res) => {
             message:
                 error.message
 
-        })
+        });
     }
+};
 
-}
 
+// ======================================================
+// EXPORTS
+// ======================================================
 
 export {
+
     loginUser,
+
     registerUser,
+
     getProfile,
+
     updateProfile,
+
     bookAppointment,
+
     listAppointment,
+
     cancelAppointment,
+
     paymentRazorpay,
+
     verifyRazorpay,
+
     paymentStripe,
+
     verifyStripe
-}
+
+};

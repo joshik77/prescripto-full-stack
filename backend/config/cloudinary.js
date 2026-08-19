@@ -1,82 +1,66 @@
-import { v2 as cloudinary } from "cloudinary";
+try {
+    console.log("================================");
+    console.log("UPLOADING DOCTOR IMAGE");
+    console.log("File path:", imageFile?.path);
+    console.log("File exists:", !!imageFile);
+    console.log("File size:", imageFile?.size);
+    console.log("File type:", imageFile?.mimetype);
 
-const connectCloudinary = async () => {
-
-    console.log("========== CLOUDINARY CONFIG ==========");
-
-    console.log(
-        "Cloud name:",
-        process.env.CLOUDINARY_NAME
+    const imageUpload = await cloudinary.uploader.upload(
+        imageFile.path,
+        {
+            resource_type: "image"
+        }
     );
 
-    console.log(
-        "API key exists:",
-        !!process.env.CLOUDINARY_API_KEY
+    console.log("========== CLOUDINARY UPLOAD SUCCESS ==========");
+    console.log("Public ID:", imageUpload.public_id);
+    console.log("Secure URL:", imageUpload.secure_url);
+    console.log("===============================================");
+
+    const imageUrl = imageUpload.secure_url;
+
+    // Continue your existing doctor creation code here.
+
+} catch (error) {
+    console.error("========== CLOUDINARY UPLOAD ERROR ==========");
+
+    console.error("Message:", error?.message);
+    console.error("HTTP Code:", error?.http_code);
+    console.error("Name:", error?.name);
+    console.error("Error:", error?.error);
+    console.error("Response:", error?.response);
+
+    console.error(
+        "Response Status:",
+        error?.response?.status
     );
 
-    console.log(
-        "API secret exists:",
-        !!process.env.CLOUDINARY_SECRET_KEY
+    console.error(
+        "Response Data:",
+        error?.response?.data
     );
 
+    console.error(
+        "Response Headers:",
+        error?.response?.headers
+    );
 
-    console.log("CLOUDINARY CHECK:", {
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  secret_exists: !!process.env.CLOUDINARY_SECRET_KEY
-});
+    console.error(
+        "X-Cld-Error:",
+        error?.response?.headers?.["x-cld-error"]
+    );
 
-    cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_SECRET_KEY
+    console.error("FULL ERROR:", error);
+
+    console.error("============================================");
+
+    return res.status(500).json({
+        success: false,
+        message: error?.message || "Cloudinary upload failed",
+        cloudinary_error:
+            error?.error?.message ||
+            error?.response?.data?.error?.message ||
+            null
     });
-
-    try {
-
-        const result = await cloudinary.api.ping();
-
-        console.log(
-            "CLOUDINARY PING SUCCESS:",
-            result
-        );
-
-    } catch (error) {
-
-        console.error(
-            "========================================"
-        );
-
-        console.error(
-            "CLOUDINARY PING FAILED"
-        );
-
-        console.error(
-            "Message:",
-            error?.message
-        );
-
-        console.error(
-            "HTTP Code:",
-            error?.http_code
-        );
-
-        console.error(
-            "Name:",
-            error?.name
-        );
-
-        console.error(
-            "Full Error:",
-            error
-        );
-
-        console.error(
-            "========================================"
-        );
-    }
-
-    console.log("=======================================");
-};
-
-export default connectCloudinary;
+}

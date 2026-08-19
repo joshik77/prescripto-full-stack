@@ -2,157 +2,535 @@ import axios from "axios";
 import { createContext, useState } from "react";
 import { toast } from "react-toastify";
 
-
-export const AdminContext = createContext()
+export const AdminContext = createContext();
 
 const AdminContextProvider = (props) => {
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-    const [aToken, setAToken] = useState(localStorage.getItem('aToken') ? localStorage.getItem('aToken') : '')
+    const [aToken, setAToken] = useState(
+        localStorage.getItem("aToken")
+            ? localStorage.getItem("aToken")
+            : ""
+    );
 
-    const [appointments, setAppointments] = useState([])
-    const [doctors, setDoctors] = useState([])
-    const [dashData, setDashData] = useState(false)
+    const [appointments, setAppointments] = useState([]);
+    const [doctors, setDoctors] = useState([]);
+    const [dashData, setDashData] = useState(false);
 
-    // Getting all Doctors data from Database using API
+
+    // =====================================================
+    // GET ALL DOCTORS
+    // =====================================================
+
     const getAllDoctors = async () => {
 
         try {
 
-            const { data } = await axios.get(backendUrl + '/api/admin/all-doctors', { headers: { aToken } })
+            const { data } = await axios.get(
+                backendUrl + "/api/admin/all-doctors",
+                {
+                    headers: {
+                        aToken
+                    }
+                }
+            );
+
             if (data.success) {
-                setDoctors(data.doctors)
+
+                setDoctors(data.doctors);
+
             } else {
-                toast.error(data.message)
+
+                toast.error(data.message);
+
             }
 
         } catch (error) {
-            toast.error(error.message)
+
+            console.log(
+                "GET ALL DOCTORS ERROR:",
+                error
+            );
+
+            toast.error(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to get doctors"
+            );
         }
+    };
 
-    }
 
-    // Function to change doctor availability using API
+    // =====================================================
+    // CHANGE DOCTOR AVAILABILITY
+    // =====================================================
+
     const changeAvailability = async (docId) => {
+
         try {
 
-            const { data } = await axios.post(backendUrl + '/api/admin/change-availability', { docId }, { headers: { aToken } })
-            if (data.success) {
-                toast.success(data.message)
-                getAllDoctors()
-            } else {
-                toast.error(data.message)
+            console.log(
+                "================================="
+            );
+
+            console.log(
+                "CHANGE DOCTOR AVAILABILITY"
+            );
+
+            console.log(
+                "Doctor ID:",
+                docId
+            );
+
+            console.log(
+                "================================="
+            );
+
+
+            // Make sure an ID was actually supplied
+
+            if (!docId) {
+
+                toast.error(
+                    "Doctor ID is missing"
+                );
+
+                return;
             }
 
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        }
-    }
 
-    // Function to remove doctor using API
-    const removeDoctor = async (docId) => {
-        try {
+            // IMPORTANT:
+            // Backend expects:
+            //
+            // req.body.docId
+            //
+            // Therefore we send:
+            //
+            // { docId }
 
             const { data } = await axios.post(
-                backendUrl + '/api/admin/remove-doctor',
-                { docId },
-                { headers: { aToken } }
-            )
+
+                backendUrl +
+                "/api/admin/change-availability",
+
+                {
+                    docId: docId
+                },
+
+                {
+                    headers: {
+                        aToken
+                    }
+                }
+
+            );
+
 
             if (data.success) {
-                toast.success(data.message)
-                getAllDoctors()
+
+                toast.success(
+                    data.message
+                );
+
+                // Refresh doctor list
+                await getAllDoctors();
+
             } else {
-                toast.error(data.message)
+
+                toast.error(
+                    data.message
+                );
             }
 
+
         } catch (error) {
-            console.log(error)
-            toast.error(error.message)
+
+            console.log(
+                "================================="
+            );
+
+            console.log(
+                "CHANGE AVAILABILITY ERROR"
+            );
+
+            console.log(
+                "================================="
+            );
+
+            console.log(
+                "Status:",
+                error.response?.status
+            );
+
+            console.log(
+                "Response:",
+                error.response?.data
+            );
+
+            console.log(
+                "Error:",
+                error
+            );
+
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                error.message ||
+
+                "Failed to change availability"
+
+            );
         }
-    }
+    };
 
 
-    // Getting all appointment data from Database using API
+    // =====================================================
+    // REMOVE DOCTOR
+    // =====================================================
+
+    const removeDoctor = async (docId) => {
+
+        try {
+
+            console.log(
+                "================================="
+            );
+
+            console.log(
+                "REMOVE DOCTOR"
+            );
+
+            console.log(
+                "Doctor ID:",
+                docId
+            );
+
+            console.log(
+                "================================="
+            );
+
+
+            // Make sure an ID was supplied
+
+            if (!docId) {
+
+                toast.error(
+                    "Doctor ID is missing"
+                );
+
+                return;
+            }
+
+
+            // IMPORTANT:
+            // Backend expects:
+            //
+            // const { docId } = req.body
+            //
+            // Therefore we send:
+            //
+            // { docId }
+
+            const { data } = await axios.post(
+
+                backendUrl +
+                "/api/admin/remove-doctor",
+
+                {
+                    docId: docId
+                },
+
+                {
+                    headers: {
+                        aToken
+                    }
+                }
+
+            );
+
+
+            if (data.success) {
+
+                toast.success(
+                    data.message
+                );
+
+                // Refresh doctor list
+                await getAllDoctors();
+
+            } else {
+
+                toast.error(
+                    data.message
+                );
+            }
+
+
+        } catch (error) {
+
+            console.log(
+                "================================="
+            );
+
+            console.log(
+                "REMOVE DOCTOR ERROR"
+            );
+
+            console.log(
+                "================================="
+            );
+
+            console.log(
+                "Status:",
+                error.response?.status
+            );
+
+            console.log(
+                "Response:",
+                error.response?.data
+            );
+
+            console.log(
+                "Error:",
+                error
+            );
+
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                error.message ||
+
+                "Failed to remove doctor"
+
+            );
+        }
+    };
+
+
+    // =====================================================
+    // GET ALL APPOINTMENTS
+    // =====================================================
+
     const getAllAppointments = async () => {
 
         try {
 
-            const { data } = await axios.get(backendUrl + '/api/admin/appointments', { headers: { aToken } })
+            const { data } = await axios.get(
+
+                backendUrl +
+                "/api/admin/appointments",
+
+                {
+                    headers: {
+                        aToken
+                    }
+                }
+
+            );
+
+
             if (data.success) {
-                setAppointments(data.appointments.reverse())
+
+                setAppointments(
+                    [...data.appointments].reverse()
+                );
+
             } else {
-                toast.error(data.message)
+
+                toast.error(
+                    data.message
+                );
             }
 
+
         } catch (error) {
-            toast.error(error.message)
-            console.log(error)
+
+            console.log(
+                "GET ALL APPOINTMENTS ERROR:",
+                error
+            );
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                error.message ||
+
+                "Failed to get appointments"
+
+            );
         }
+    };
 
-    }
 
-    // Function to cancel appointment using API
+    // =====================================================
+    // CANCEL APPOINTMENT
+    // =====================================================
+
     const cancelAppointment = async (appointmentId) => {
 
         try {
 
-            const { data } = await axios.post(backendUrl + '/api/admin/cancel-appointment', { appointmentId }, { headers: { aToken } })
+            if (!appointmentId) {
 
-            if (data.success) {
-                toast.success(data.message)
-                getAllAppointments()
-            } else {
-                toast.error(data.message)
+                toast.error(
+                    "Appointment ID is missing"
+                );
+
+                return;
             }
 
+
+            const { data } = await axios.post(
+
+                backendUrl +
+                "/api/admin/cancel-appointment",
+
+                {
+                    appointmentId: appointmentId
+                },
+
+                {
+                    headers: {
+                        aToken
+                    }
+                }
+
+            );
+
+
+            if (data.success) {
+
+                toast.success(
+                    data.message
+                );
+
+                await getAllAppointments();
+
+            } else {
+
+                toast.error(
+                    data.message
+                );
+            }
+
+
         } catch (error) {
-            toast.error(error.message)
-            console.log(error)
+
+            console.log(
+                "CANCEL APPOINTMENT ERROR:",
+                error
+            );
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                error.message ||
+
+                "Failed to cancel appointment"
+
+            );
         }
+    };
 
-    }
 
-    // Getting Admin Dashboard data from Database using API
+    // =====================================================
+    // GET DASHBOARD DATA
+    // =====================================================
+
     const getDashData = async () => {
+
         try {
 
-            const { data } = await axios.get(backendUrl + '/api/admin/dashboard', { headers: { aToken } })
+            const { data } = await axios.get(
+
+                backendUrl +
+                "/api/admin/dashboard",
+
+                {
+                    headers: {
+                        aToken
+                    }
+                }
+
+            );
+
 
             if (data.success) {
-                setDashData(data.dashData)
+
+                setDashData(
+                    data.dashData
+                );
+
             } else {
-                toast.error(data.message)
+
+                toast.error(
+                    data.message
+                );
             }
 
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        }
 
-    }
+        } catch (error) {
+
+            console.log(
+                "GET DASHBOARD ERROR:",
+                error
+            );
+
+            toast.error(
+
+                error.response?.data?.message ||
+
+                error.message ||
+
+                "Failed to get dashboard data"
+
+            );
+        }
+    };
+
+
+    // =====================================================
+    // CONTEXT VALUE
+    // =====================================================
 
     const value = {
-        aToken, setAToken,
+
+        aToken,
+        setAToken,
+
         doctors,
         getAllDoctors,
+
         changeAvailability,
         removeDoctor,
+
         appointments,
         getAllAppointments,
-        getDashData,
         cancelAppointment,
+
+        getDashData,
         dashData
-    }
+
+    };
+
 
     return (
+
         <AdminContext.Provider value={value}>
+
             {props.children}
+
         </AdminContext.Provider>
-    )
 
-}
+    );
+};
 
-export default AdminContextProvider
+
+export default AdminContextProvider;

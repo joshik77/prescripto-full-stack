@@ -1,9 +1,10 @@
 import jwt from "jsonwebtoken";
-import appointmentModel from "../models/appointmentModel.js";
-import doctorModel from "../models/doctorModel.js";
 import bcrypt from "bcrypt";
 import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
+
+import doctorModel from "../models/doctorModel.js";
+import appointmentModel from "../models/appointmentModel.js";
 import userModel from "../models/userModel.js";
 
 
@@ -56,7 +57,7 @@ const loginAdmin = async (req, res) => {
 
         console.error("ADMIN LOGIN ERROR:", error);
 
-        return res.json({
+        return res.status(500).json({
             success: false,
             message: error.message
         });
@@ -65,7 +66,7 @@ const loginAdmin = async (req, res) => {
 
 
 // ======================================================
-// ADMIN APPOINTMENTS
+// GET ALL APPOINTMENTS
 // ======================================================
 
 const appointmentsAdmin = async (req, res) => {
@@ -75,7 +76,7 @@ const appointmentsAdmin = async (req, res) => {
         const appointments =
             await appointmentModel.find({});
 
-        res.json({
+        return res.json({
             success: true,
             appointments
         });
@@ -87,7 +88,7 @@ const appointmentsAdmin = async (req, res) => {
             error
         );
 
-        res.json({
+        return res.status(500).json({
             success: false,
             message: error.message
         });
@@ -105,6 +106,14 @@ const appointmentCancel = async (req, res) => {
 
         const { appointmentId } = req.body;
 
+        if (!appointmentId) {
+
+            return res.status(400).json({
+                success: false,
+                message: "Appointment ID is required"
+            });
+        }
+
         await appointmentModel.findByIdAndUpdate(
             appointmentId,
             {
@@ -112,7 +121,7 @@ const appointmentCancel = async (req, res) => {
             }
         );
 
-        res.json({
+        return res.json({
             success: true,
             message: "Appointment Cancelled"
         });
@@ -120,11 +129,11 @@ const appointmentCancel = async (req, res) => {
     } catch (error) {
 
         console.error(
-            "ADMIN CANCEL ERROR:",
+            "ADMIN CANCEL APPOINTMENT ERROR:",
             error
         );
 
-        res.json({
+        return res.status(500).json({
             success: false,
             message: error.message
         });
@@ -176,28 +185,12 @@ const uploadDoctorImage = (buffer) => {
         if (!buffer) {
 
             reject(
-                new Error(
-                    "Image buffer is missing"
-                )
+                new Error("Image buffer is missing")
             );
 
             return;
         }
 
-
-        /*
-         * IMPORTANT:
-         *
-         * prescripto_doctors is an UNSIGNED
-         * Cloudinary upload preset.
-         *
-         * Therefore we MUST use:
-         *
-         * unsigned_upload_stream()
-         *
-         * and pass the preset name as
-         * the first argument.
-         */
 
         const stream =
             cloudinary.uploader.unsigned_upload_stream(
@@ -240,12 +233,7 @@ const uploadDoctorImage = (buffer) => {
                         );
 
                         console.error(
-                            "Error:",
-                            error?.error
-                        );
-
-                        console.error(
-                            "Full error:",
+                            "Full Error:",
                             error
                         );
 
@@ -323,14 +311,13 @@ const uploadDoctorImage = (buffer) => {
                 );
 
                 console.error(
-                    "Full error:",
+                    "Full Error:",
                     streamError
                 );
 
                 console.error(
                     "=============================================="
                 );
-
 
                 reject(streamError);
             }
@@ -492,7 +479,8 @@ const addDoctor = async (req, res) => {
 
                 success: false,
 
-                message: "Please enter a strong password"
+                message:
+                    "Please enter a strong password"
 
             });
         }
@@ -527,7 +515,6 @@ const addDoctor = async (req, res) => {
 
         const salt =
             await bcrypt.genSalt(10);
-
 
         const hashedPassword =
             await bcrypt.hash(
@@ -665,7 +652,7 @@ const addDoctor = async (req, res) => {
 
 
         // ==================================================
-        // CREATE DOCTOR DATA
+        // CREATE DOCTOR
         // ==================================================
 
         const doctorData = {
@@ -695,14 +682,8 @@ const addDoctor = async (req, res) => {
         };
 
 
-        // ==================================================
-        // SAVE DOCTOR
-        // ==================================================
-
         const newDoctor =
-            new doctorModel(
-                doctorData
-            );
+            new doctorModel(doctorData);
 
 
         await newDoctor.save();
@@ -795,8 +776,7 @@ const allDoctors = async (req, res) => {
                 .find({})
                 .select("-password");
 
-
-        res.json({
+        return res.json({
 
             success: true,
 
@@ -811,7 +791,7 @@ const allDoctors = async (req, res) => {
             error
         );
 
-        res.json({
+        return res.status(500).json({
 
             success: false,
 
@@ -824,18 +804,41 @@ const allDoctors = async (req, res) => {
 
 
 // ======================================================
-// REMOVE DOCTOR
+// CHANGE DOCTOR AVAILABILITY
 // ======================================================
 
-const removeDoctor = async (req, res) => {
+const changeAvailability = async (req, res) => {
 
     try {
 
-        const { id } =
-            req.body;
+        console.log(
+            "=============================================="
+        );
+
+        console.log(
+            "CHANGE AVAILABILITY REQUEST"
+        );
+
+        console.log(
+            "=============================================="
+        );
+
+        console.log(
+            "Request body:",
+            req.body
+        );
 
 
-        if (!id) {
+        const { docId } = req.body;
+
+
+        console.log(
+            "Doctor ID received:",
+            docId
+        );
+
+
+        if (!docId) {
 
             return res.status(400).json({
 
@@ -849,7 +852,7 @@ const removeDoctor = async (req, res) => {
 
 
         const doctor =
-            await doctorModel.findById(id);
+            await doctorModel.findById(docId);
 
 
         if (!doctor) {
@@ -865,10 +868,213 @@ const removeDoctor = async (req, res) => {
         }
 
 
-        await doctorModel.findByIdAndDelete(id);
+        doctor.available =
+            !doctor.available;
 
 
-        res.json({
+        await doctor.save();
+
+
+        console.log(
+            "Doctor availability changed:",
+            doctor.available
+        );
+
+
+        return res.json({
+
+            success: true,
+
+            message:
+                "Doctor availability changed"
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "=============================================="
+        );
+
+        console.error(
+            "CHANGE AVAILABILITY ERROR"
+        );
+
+        console.error(
+            "=============================================="
+        );
+
+        console.error(
+            "Message:",
+            error?.message
+        );
+
+        console.error(
+            "Full Error:",
+            error
+        );
+
+        console.error(
+            "=============================================="
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                error?.message ||
+                "Failed to change availability"
+
+        });
+    }
+};
+
+
+// ======================================================
+// REMOVE DOCTOR
+// ======================================================
+
+const removeDoctor = async (req, res) => {
+
+    try {
+
+        console.log(
+            "=============================================="
+        );
+
+        console.log(
+            "REMOVE DOCTOR REQUEST"
+        );
+
+        console.log(
+            "=============================================="
+        );
+
+        console.log(
+            "Request body:",
+            req.body
+        );
+
+
+        /*
+         * IMPORTANT:
+         *
+         * AdminContext.jsx sends:
+         *
+         * {
+         *     docId: doctor._id
+         * }
+         *
+         * Therefore the backend MUST read docId.
+         */
+
+        const { docId } = req.body;
+
+
+        console.log(
+            "Doctor ID received:",
+            docId
+        );
+
+
+        // ==================================================
+        // CHECK ID EXISTS
+        // ==================================================
+
+        if (!docId) {
+
+            console.error(
+                "Doctor ID is missing"
+            );
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Doctor ID is required"
+
+            });
+        }
+
+
+        // ==================================================
+        // CHECK VALID MONGODB OBJECT ID
+        // ==================================================
+
+        if (!doctorModel.schema.path("_id").cast(docId)) {
+
+            console.error(
+                "Invalid Doctor ID:",
+                docId
+            );
+
+            return res.status(400).json({
+
+                success: false,
+
+                message:
+                    "Invalid Doctor ID"
+
+            });
+        }
+
+
+        // ==================================================
+        // FIND DOCTOR
+        // ==================================================
+
+        const doctor =
+            await doctorModel.findById(docId);
+
+
+        if (!doctor) {
+
+            console.error(
+                "Doctor not found:",
+                docId
+            );
+
+            return res.status(404).json({
+
+                success: false,
+
+                message:
+                    "Doctor not found"
+
+            });
+        }
+
+
+        console.log(
+            "Doctor found:",
+            doctor.name
+        );
+
+
+        // ==================================================
+        // DELETE DOCTOR
+        // ==================================================
+
+        await doctorModel.findByIdAndDelete(
+            docId
+        );
+
+
+        console.log(
+            "Doctor successfully deleted:",
+            docId
+        );
+
+        console.log(
+            "=============================================="
+        );
+
+
+        return res.json({
 
             success: true,
 
@@ -877,19 +1083,53 @@ const removeDoctor = async (req, res) => {
 
         });
 
+
     } catch (error) {
 
         console.error(
-            "REMOVE DOCTOR ERROR:",
+            "=============================================="
+        );
+
+        console.error(
+            "REMOVE DOCTOR ERROR"
+        );
+
+        console.error(
+            "=============================================="
+        );
+
+        console.error(
+            "Message:",
+            error?.message
+        );
+
+        console.error(
+            "Name:",
+            error?.name
+        );
+
+        console.error(
+            "Code:",
+            error?.code
+        );
+
+        console.error(
+            "Full Error:",
             error
         );
 
-        res.status(500).json({
+        console.error(
+            "=============================================="
+        );
+
+
+        return res.status(500).json({
 
             success: false,
 
             message:
-                error.message
+                error?.message ||
+                "Failed to remove doctor"
 
         });
     }
@@ -933,13 +1173,14 @@ const adminDashboard = async (req, res) => {
         };
 
 
-        res.json({
+        return res.json({
 
             success: true,
 
             dashData
 
         });
+
 
     } catch (error) {
 
@@ -948,7 +1189,8 @@ const adminDashboard = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.status(500).json({
 
             success: false,
 
@@ -970,6 +1212,7 @@ export {
     appointmentCancel,
     addDoctor,
     allDoctors,
+    changeAvailability,
     removeDoctor,
     adminDashboard
 };

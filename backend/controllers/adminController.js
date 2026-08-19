@@ -257,10 +257,7 @@ const addDoctor = async (req, res) => {
             );
 
 
-        // ------------------------------------------------
-        // Upload image to Cloudinary using buffer
-        // ------------------------------------------------
-
+        // Upload image to Cloudinary
         const uploadImage =
             () => new Promise(
                 (resolve, reject) => {
@@ -452,6 +449,54 @@ const allDoctors = async (req, res) => {
 };
 
 
+// ======================================================
+// REMOVE DOCTOR
+// ======================================================
+
+const removeDoctor = async (req, res) => {
+
+    try {
+
+        const { id } = req.body;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Doctor ID is required"
+            });
+        }
+
+        const doctor = await doctorModel.findById(id);
+
+        if (!doctor) {
+            return res.status(404).json({
+                success: false,
+                message: "Doctor not found"
+            });
+        }
+
+        await doctorModel.findByIdAndDelete(id);
+
+        res.json({
+            success: true,
+            message: "Doctor removed successfully"
+        });
+
+    } catch (error) {
+
+        console.error(
+            "REMOVE DOCTOR ERROR:",
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+
 // API to get dashboard data
 const adminDashboard = async (req, res) => {
 
@@ -507,5 +552,6 @@ export {
     appointmentCancel,
     addDoctor,
     allDoctors,
+    removeDoctor,
     adminDashboard
 };

@@ -133,7 +133,7 @@ const appointmentCancel = async (req, res) => {
 
 
 // ======================================================
-// CLOUDINARY UPLOAD
+// CLOUDINARY UNSIGNED DOCTOR IMAGE UPLOAD
 // ======================================================
 
 const uploadDoctorImage = (buffer) => {
@@ -141,7 +141,15 @@ const uploadDoctorImage = (buffer) => {
     return new Promise((resolve, reject) => {
 
         console.log(
-            "========== CLOUDINARY UPLOAD START =========="
+            "=============================================="
+        );
+
+        console.log(
+            "CLOUDINARY UNSIGNED UPLOAD START"
+        );
+
+        console.log(
+            "=============================================="
         );
 
         console.log(
@@ -150,13 +158,8 @@ const uploadDoctorImage = (buffer) => {
         );
 
         console.log(
-            "API key exists:",
-            !!process.env.CLOUDINARY_API_KEY
-        );
-
-        console.log(
-            "API secret exists:",
-            !!process.env.CLOUDINARY_SECRET_KEY
+            "Upload preset:",
+            "prescripto_doctors"
         );
 
         console.log(
@@ -169,8 +172,37 @@ const uploadDoctorImage = (buffer) => {
             buffer?.length
         );
 
+
+        if (!buffer) {
+
+            reject(
+                new Error(
+                    "Image buffer is missing"
+                )
+            );
+
+            return;
+        }
+
+
+        /*
+         * IMPORTANT:
+         *
+         * prescripto_doctors is an UNSIGNED
+         * Cloudinary upload preset.
+         *
+         * Therefore we MUST use:
+         *
+         * unsigned_upload_stream()
+         *
+         * and pass the preset name as
+         * the first argument.
+         */
+
         const stream =
-            cloudinary.uploader.upload_stream(
+            cloudinary.uploader.unsigned_upload_stream(
+
+                "prescripto_doctors",
 
                 {
                     resource_type: "image"
@@ -181,15 +213,15 @@ const uploadDoctorImage = (buffer) => {
                     if (error) {
 
                         console.error(
-                            "================================================"
+                            "=============================================="
                         );
 
                         console.error(
-                            "       CLOUDINARY REAL UPLOAD ERROR"
+                            "CLOUDINARY UNSIGNED UPLOAD ERROR"
                         );
 
                         console.error(
-                            "================================================"
+                            "=============================================="
                         );
 
                         console.error(
@@ -213,64 +245,12 @@ const uploadDoctorImage = (buffer) => {
                         );
 
                         console.error(
-                            "Response:",
-                            error?.response
+                            "Full error:",
+                            error
                         );
 
                         console.error(
-                            "Response body:",
-                            error?.response?.body
-                        );
-
-                        console.error(
-                            "Response data:",
-                            error?.response?.data
-                        );
-
-                        console.error(
-                            "Response status:",
-                            error?.response?.status
-                        );
-
-                        console.error(
-                            "Response headers:",
-                            error?.response?.headers
-                        );
-
-                        console.error(
-                            "X-Cld-Error:",
-                            error?.response?.headers?.["x-cld-error"]
-                        );
-
-                        console.error(
-                            "x-cld-error:",
-                            error?.response?.headers?.["X-Cld-Error"]
-                        );
-
-                        console.error(
-                            "Full error JSON:"
-                        );
-
-                        try {
-
-                            console.error(
-                                JSON.stringify(
-                                    error,
-                                    Object.getOwnPropertyNames(error),
-                                    2
-                                )
-                            );
-
-                        } catch (jsonError) {
-
-                            console.error(
-                                "Could not stringify Cloudinary error:",
-                                jsonError
-                            );
-                        }
-
-                        console.error(
-                            "================================================"
+                            "=============================================="
                         );
 
                         reject(error);
@@ -280,15 +260,15 @@ const uploadDoctorImage = (buffer) => {
 
 
                     console.log(
-                        "================================================"
+                        "=============================================="
                     );
 
                     console.log(
-                        "       CLOUDINARY UPLOAD SUCCESS"
+                        "CLOUDINARY UPLOAD SUCCESS"
                     );
 
                     console.log(
-                        "================================================"
+                        "=============================================="
                     );
 
                     console.log(
@@ -302,18 +282,19 @@ const uploadDoctorImage = (buffer) => {
                     );
 
                     console.log(
-                        "Resource type:",
-                        result?.resource_type
-                    );
-
-                    console.log(
                         "Format:",
                         result?.format
                     );
 
                     console.log(
-                        "================================================"
+                        "Resource type:",
+                        result?.resource_type
                     );
+
+                    console.log(
+                        "=============================================="
+                    );
+
 
                     resolve(result);
                 }
@@ -325,15 +306,15 @@ const uploadDoctorImage = (buffer) => {
             (streamError) => {
 
                 console.error(
-                    "================================================"
+                    "=============================================="
                 );
 
                 console.error(
-                    "       CLOUDINARY STREAM ERROR"
+                    "CLOUDINARY STREAM ERROR"
                 );
 
                 console.error(
-                    "================================================"
+                    "=============================================="
                 );
 
                 console.error(
@@ -342,13 +323,14 @@ const uploadDoctorImage = (buffer) => {
                 );
 
                 console.error(
-                    "Full stream error:",
+                    "Full error:",
                     streamError
                 );
 
                 console.error(
-                    "================================================"
+                    "=============================================="
                 );
+
 
                 reject(streamError);
             }
@@ -373,7 +355,7 @@ const addDoctor = async (req, res) => {
         );
 
         console.log(
-            "             ADD DOCTOR REQUEST"
+            "ADD DOCTOR REQUEST"
         );
 
         console.log(
@@ -474,8 +456,7 @@ const addDoctor = async (req, res) => {
 
                 success: false,
 
-                message:
-                    "Doctor image is required"
+                message: "Doctor image is required"
 
             });
         }
@@ -487,8 +468,7 @@ const addDoctor = async (req, res) => {
 
                 success: false,
 
-                message:
-                    "Image buffer is missing"
+                message: "Image buffer is missing"
 
             });
         }
@@ -500,8 +480,7 @@ const addDoctor = async (req, res) => {
 
                 success: false,
 
-                message:
-                    "Please enter a valid email"
+                message: "Please enter a valid email"
 
             });
         }
@@ -513,15 +492,14 @@ const addDoctor = async (req, res) => {
 
                 success: false,
 
-                message:
-                    "Please enter a strong password"
+                message: "Please enter a strong password"
 
             });
         }
 
 
         // ==================================================
-        // CHECK DOCTOR
+        // CHECK EXISTING DOCTOR
         // ==================================================
 
         const existingDoctor =
@@ -559,7 +537,7 @@ const addDoctor = async (req, res) => {
 
 
         // ==================================================
-        // CLOUDINARY UPLOAD
+        // CLOUDINARY IMAGE UPLOAD
         // ==================================================
 
         console.log(
@@ -584,7 +562,7 @@ const addDoctor = async (req, res) => {
             );
 
             console.error(
-                "       ADD DOCTOR CLOUDINARY FAILURE"
+                "ADD DOCTOR CLOUDINARY FAILURE"
             );
 
             console.error(
@@ -607,12 +585,7 @@ const addDoctor = async (req, res) => {
             );
 
             console.error(
-                "X-Cld-Error:",
-                cloudinaryError?.response?.headers?.["x-cld-error"]
-            );
-
-            console.error(
-                "Full error:",
+                "Full Error:",
                 cloudinaryError
             );
 
@@ -660,7 +633,7 @@ const addDoctor = async (req, res) => {
 
 
         // ==================================================
-        // ADDRESS
+        // PARSE ADDRESS
         // ==================================================
 
         let parsedAddress;
@@ -675,6 +648,11 @@ const addDoctor = async (req, res) => {
 
         } catch (error) {
 
+            console.error(
+                "ADDRESS PARSE ERROR:",
+                error
+            );
+
             return res.status(400).json({
 
                 success: false,
@@ -687,7 +665,7 @@ const addDoctor = async (req, res) => {
 
 
         // ==================================================
-        // DOCTOR DATA
+        // CREATE DOCTOR DATA
         // ==================================================
 
         const doctorData = {
@@ -696,11 +674,9 @@ const addDoctor = async (req, res) => {
 
             email,
 
-            image:
-                imageUrl,
+            image: imageUrl,
 
-            password:
-                hashedPassword,
+            password: hashedPassword,
 
             speciality,
 
@@ -710,14 +686,12 @@ const addDoctor = async (req, res) => {
 
             about,
 
-            fees:
-                Number(fees),
+            fees: Number(fees),
 
-            address:
-                parsedAddress,
+            address: parsedAddress,
 
-            date:
-                Date.now()
+            date: Date.now()
+
         };
 
 
@@ -743,11 +717,6 @@ const addDoctor = async (req, res) => {
         );
 
         console.log(
-            "Email:",
-            email
-        );
-
-        console.log(
             "=============================================="
         );
 
@@ -756,8 +725,7 @@ const addDoctor = async (req, res) => {
 
             success: true,
 
-            message:
-                "Doctor Added"
+            message: "Doctor Added"
 
         });
 
@@ -769,7 +737,7 @@ const addDoctor = async (req, res) => {
         );
 
         console.error(
-            "             ADD DOCTOR ERROR"
+            "ADD DOCTOR ERROR"
         );
 
         console.error(
@@ -792,37 +760,7 @@ const addDoctor = async (req, res) => {
         );
 
         console.error(
-            "Error:",
-            error?.error
-        );
-
-        console.error(
-            "Response:",
-            error?.response
-        );
-
-        console.error(
-            "Response body:",
-            error?.response?.body
-        );
-
-        console.error(
-            "Response data:",
-            error?.response?.data
-        );
-
-        console.error(
-            "Response headers:",
-            error?.response?.headers
-        );
-
-        console.error(
-            "X-Cld-Error:",
-            error?.response?.headers?.["x-cld-error"]
-        );
-
-        console.error(
-            "Full error:",
+            "Full Error:",
             error
         );
 
@@ -845,7 +783,7 @@ const addDoctor = async (req, res) => {
 
 
 // ======================================================
-// ALL DOCTORS
+// GET ALL DOCTORS
 // ======================================================
 
 const allDoctors = async (req, res) => {

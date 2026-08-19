@@ -6,7 +6,12 @@ import validator from "validator";
 import { v2 as cloudinary } from "cloudinary";
 import userModel from "../models/userModel.js";
 
-// API for admin login
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_SECRET_KEY
+});
+
 const loginAdmin = async (req, res) => {
     try {
 
@@ -47,7 +52,6 @@ const loginAdmin = async (req, res) => {
 };
 
 
-// API to get all appointments
 const appointmentsAdmin = async (req, res) => {
 
     try {
@@ -72,7 +76,6 @@ const appointmentsAdmin = async (req, res) => {
 };
 
 
-// API for appointment cancellation
 const appointmentCancel = async (req, res) => {
 
     try {
@@ -102,10 +105,6 @@ const appointmentCancel = async (req, res) => {
     }
 };
 
-
-// ======================================================
-// ADD DOCTOR
-// ======================================================
 
 const addDoctor = async (req, res) => {
 
@@ -153,7 +152,6 @@ const addDoctor = async (req, res) => {
         const imageFile = req.file;
 
 
-        // Check all fields
         if (
             !name ||
             !email ||
@@ -174,7 +172,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Check image
         if (!imageFile) {
 
             return res.status(400).json({
@@ -185,7 +182,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Validate email
         if (!validator.isEmail(email)) {
 
             return res.status(400).json({
@@ -196,7 +192,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Validate password
         if (password.length < 8) {
 
             return res.status(400).json({
@@ -207,7 +202,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Check Cloudinary configuration
         if (
             !process.env.CLOUDINARY_NAME ||
             !process.env.CLOUDINARY_API_KEY ||
@@ -241,7 +235,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Check duplicate email
         const existingDoctor =
             await doctorModel.findOne({
                 email
@@ -258,7 +251,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Hash password
         const salt =
             await bcrypt.genSalt(10);
 
@@ -268,10 +260,6 @@ const addDoctor = async (req, res) => {
                 salt
             );
 
-
-        // ------------------------------------------------
-        // Upload image to Cloudinary
-        // ------------------------------------------------
 
         const uploadImage =
             () => new Promise(
@@ -387,7 +375,6 @@ const addDoctor = async (req, res) => {
         );
 
 
-        // Parse address safely
         let parsedAddress;
 
         try {
@@ -407,7 +394,6 @@ const addDoctor = async (req, res) => {
         }
 
 
-        // Create doctor
         const doctorData = {
 
             name,
@@ -511,7 +497,6 @@ const addDoctor = async (req, res) => {
 };
 
 
-// API to get all doctors
 const allDoctors = async (req, res) => {
 
     try {
@@ -540,10 +525,6 @@ const allDoctors = async (req, res) => {
     }
 };
 
-
-// ======================================================
-// REMOVE DOCTOR
-// ======================================================
 
 const removeDoctor = async (req, res) => {
 
@@ -596,7 +577,6 @@ const removeDoctor = async (req, res) => {
 };
 
 
-// API to get dashboard data
 const adminDashboard = async (req, res) => {
 
     try {

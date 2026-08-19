@@ -114,10 +114,7 @@ const addDoctor = async (req, res) => {
         console.log("==============================");
         console.log("ADD DOCTOR REQUEST");
         console.log("Body:", req.body);
-        console.log(
-            "File exists:",
-            !!req.file
-        );
+        console.log("File exists:", !!req.file);
 
         if (req.file) {
 
@@ -218,7 +215,22 @@ const addDoctor = async (req, res) => {
         ) {
 
             console.error(
-                "Cloudinary environment variables are missing"
+                "CLOUDINARY CONFIGURATION ERROR"
+            );
+
+            console.error(
+                "CLOUDINARY_NAME exists:",
+                !!process.env.CLOUDINARY_NAME
+            );
+
+            console.error(
+                "CLOUDINARY_API_KEY exists:",
+                !!process.env.CLOUDINARY_API_KEY
+            );
+
+            console.error(
+                "CLOUDINARY_SECRET_KEY exists:",
+                !!process.env.CLOUDINARY_SECRET_KEY
             );
 
             return res.status(500).json({
@@ -257,7 +269,10 @@ const addDoctor = async (req, res) => {
             );
 
 
+        // ------------------------------------------------
         // Upload image to Cloudinary
+        // ------------------------------------------------
+
         const uploadImage =
             () => new Promise(
                 (resolve, reject) => {
@@ -271,12 +286,71 @@ const addDoctor = async (req, res) => {
                             (error, result) => {
 
                                 if (error) {
+
+                                    console.error(
+                                        "================================"
+                                    );
+
+                                    console.error(
+                                        "CLOUDINARY UPLOAD ERROR"
+                                    );
+
+                                    console.error(
+                                        "Message:",
+                                        error.message
+                                    );
+
+                                    console.error(
+                                        "HTTP Code:",
+                                        error.http_code
+                                    );
+
+                                    console.error(
+                                        "Name:",
+                                        error.name
+                                    );
+
+                                    console.error(
+                                        "Full Cloudinary Error:",
+                                        error
+                                    );
+
+                                    console.error(
+                                        "================================"
+                                    );
+
                                     reject(error);
+
                                 } else {
+
+                                    console.log(
+                                        "CLOUDINARY UPLOAD SUCCESS"
+                                    );
+
+                                    console.log(
+                                        "Cloudinary URL:",
+                                        result?.secure_url
+                                    );
+
                                     resolve(result);
                                 }
                             }
                         );
+
+
+                    stream.on(
+                        "error",
+                        (streamError) => {
+
+                            console.error(
+                                "CLOUDINARY STREAM ERROR:",
+                                streamError
+                            );
+
+                            reject(streamError);
+                        }
+                    );
+
 
                     stream.end(
                         imageFile.buffer
@@ -399,7 +473,25 @@ const addDoctor = async (req, res) => {
             "ADD DOCTOR ERROR"
         );
 
-        console.error(error);
+        console.error(
+            "Message:",
+            error?.message
+        );
+
+        console.error(
+            "Name:",
+            error?.name
+        );
+
+        console.error(
+            "HTTP Code:",
+            error?.http_code
+        );
+
+        console.error(
+            "Full Error:",
+            error
+        );
 
         console.error(
             "=============================="
@@ -460,22 +552,29 @@ const removeDoctor = async (req, res) => {
         const { id } = req.body;
 
         if (!id) {
+
             return res.status(400).json({
                 success: false,
                 message: "Doctor ID is required"
             });
         }
 
-        const doctor = await doctorModel.findById(id);
+
+        const doctor =
+            await doctorModel.findById(id);
+
 
         if (!doctor) {
+
             return res.status(404).json({
                 success: false,
                 message: "Doctor not found"
             });
         }
 
+
         await doctorModel.findByIdAndDelete(id);
+
 
         res.json({
             success: true,
@@ -525,6 +624,7 @@ const adminDashboard = async (req, res) => {
             latestAppointments:
                 appointments.reverse()
         };
+
 
         res.json({
             success: true,

@@ -8,26 +8,32 @@ import { v2 as cloudinary } from "cloudinary";
 import Stripe from "stripe";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { sendAppointmentEmail } from "../config/email.js";
 
-// ======================================================
-// PAYMENT GATEWAYS
-// ======================================================
 
-const stripeInstance = new Stripe(
-    process.env.STRIPE_SECRET_KEY
-);
+const stripeInstance =
+    new Stripe(
+        process.env.STRIPE_SECRET_KEY
+    );
 
-const razorpayInstance = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+
+const razorpayInstance =
+    new Razorpay({
+
+        key_id:
+            process.env.RAZORPAY_KEY_ID,
+
+        key_secret:
+            process.env.RAZORPAY_KEY_SECRET
+    });
 
 
 // ======================================================
 // REGISTER USER
 // ======================================================
 
-const registerUser = async (req, res) => {
+const registerUser =
+async (req, res) => {
 
     try {
 
@@ -37,43 +43,74 @@ const registerUser = async (req, res) => {
             password
         } = req.body;
 
-        if (!name || !email || !password) {
+
+        if (
+            !name ||
+            !email ||
+            !password
+        ) {
 
             return res.json({
+
                 success: false,
-                message: "Missing Details"
+
+                message:
+                    "Missing Details"
             });
         }
 
-        if (!validator.isEmail(email)) {
+
+        if (
+            !validator.isEmail(
+                email
+            )
+        ) {
 
             return res.json({
+
                 success: false,
-                message: "Please enter a valid email"
+
+                message:
+                    "Please enter a valid email"
             });
         }
 
-        if (password.length < 8) {
+
+        if (
+            password.length < 8
+        ) {
 
             return res.json({
+
                 success: false,
-                message: "Please enter a strong password"
+
+                message:
+                    "Please enter a strong password"
             });
         }
+
 
         const existingUser =
-            await userModel.findOne({ email });
+            await userModel.findOne({
+                email
+            });
+
 
         if (existingUser) {
 
             return res.json({
+
                 success: false,
-                message: "User already exists"
+
+                message:
+                    "User already exists"
             });
         }
 
+
         const salt =
             await bcrypt.genSalt(10);
+
 
         const hashedPassword =
             await bcrypt.hash(
@@ -81,30 +118,47 @@ const registerUser = async (req, res) => {
                 salt
             );
 
+
         const userData = {
+
             name,
+
             email,
-            password: hashedPassword
+
+            password:
+                hashedPassword
         };
 
+
         const newUser =
-            new userModel(userData);
+            new userModel(
+                userData
+            );
+
 
         const user =
             await newUser.save();
 
+
         const token =
             jwt.sign(
+
                 {
-                    id: user._id
+                    id:
+                        user._id
                 },
+
                 process.env.JWT_SECRET
             );
 
-        res.json({
+
+        return res.json({
+
             success: true,
+
             token
         });
+
 
     } catch (error) {
 
@@ -113,19 +167,25 @@ const registerUser = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
+
 
 
 // ======================================================
 // LOGIN USER
 // ======================================================
 
-const loginUser = async (req, res) => {
+const loginUser =
+async (req, res) => {
 
     try {
 
@@ -134,45 +194,65 @@ const loginUser = async (req, res) => {
             password
         } = req.body;
 
+
         const user =
             await userModel.findOne({
                 email
             });
 
+
         if (!user) {
 
             return res.json({
+
                 success: false,
-                message: "User does not exist"
+
+                message:
+                    "User does not exist"
             });
         }
 
+
         const isMatch =
             await bcrypt.compare(
+
                 password,
+
                 user.password
             );
+
 
         if (!isMatch) {
 
             return res.json({
+
                 success: false,
-                message: "Invalid credentials"
+
+                message:
+                    "Invalid credentials"
             });
         }
 
+
         const token =
             jwt.sign(
+
                 {
-                    id: user._id
+                    id:
+                        user._id
                 },
+
                 process.env.JWT_SECRET
             );
 
-        res.json({
+
+        return res.json({
+
             success: true,
+
             token
         });
+
 
     } catch (error) {
 
@@ -181,19 +261,25 @@ const loginUser = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
+
 
 
 // ======================================================
 // GET PROFILE
 // ======================================================
 
-const getProfile = async (req, res) => {
+const getProfile =
+async (req, res) => {
 
     try {
 
@@ -201,15 +287,24 @@ const getProfile = async (req, res) => {
             userId
         } = req.body;
 
+
         const userData =
             await userModel
-                .findById(userId)
-                .select("-password");
+                .findById(
+                    userId
+                )
+                .select(
+                    "-password"
+                );
 
-        res.json({
+
+        return res.json({
+
             success: true,
+
             userData
         });
+
 
     } catch (error) {
 
@@ -218,33 +313,48 @@ const getProfile = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
+
 
 
 // ======================================================
 // UPDATE PROFILE
 // ======================================================
 
-const updateProfile = async (req, res) => {
+const updateProfile =
+async (req, res) => {
 
     try {
 
         const {
+
             userId,
+
             name,
+
             phone,
+
             address,
+
             dob,
+
             gender
+
         } = req.body;
+
 
         const imageFile =
             req.file;
+
 
         if (
             !name ||
@@ -254,64 +364,106 @@ const updateProfile = async (req, res) => {
         ) {
 
             return res.json({
+
                 success: false,
-                message: "Data Missing"
+
+                message:
+                    "Data Missing"
             });
         }
 
+
         let parsedAddress;
+
 
         try {
 
             parsedAddress =
-                typeof address === "string"
-                    ? JSON.parse(address)
+                typeof address ===
+                "string"
+
+                    ? JSON.parse(
+                        address
+                    )
+
                     : address;
+
 
         } catch (error) {
 
             return res.json({
+
                 success: false,
-                message: "Invalid address format"
+
+                message:
+                    "Invalid address format"
             });
         }
 
-        await userModel.findByIdAndUpdate(
-            userId,
-            {
-                name,
-                phone,
-                address: parsedAddress,
-                dob,
-                gender
-            }
-        );
+
+        await userModel
+            .findByIdAndUpdate(
+
+                userId,
+
+                {
+
+                    name,
+
+                    phone,
+
+                    address:
+                        parsedAddress,
+
+                    dob,
+
+                    gender
+                }
+            );
+
 
         if (imageFile) {
 
             const imageUpload =
-                await cloudinary.uploader.upload(
-                    imageFile.path,
-                    {
-                        resource_type: "image"
-                    }
-                );
+                await cloudinary
+                    .uploader
+                    .upload(
+
+                        imageFile.path,
+
+                        {
+                            resource_type:
+                                "image"
+                        }
+                    );
+
 
             const imageURL =
-                imageUpload.secure_url;
+                imageUpload
+                    .secure_url;
 
-            await userModel.findByIdAndUpdate(
-                userId,
-                {
-                    image: imageURL
-                }
-            );
+
+            await userModel
+                .findByIdAndUpdate(
+
+                    userId,
+
+                    {
+                        image:
+                            imageURL
+                    }
+                );
         }
 
-        res.json({
+
+        return res.json({
+
             success: true,
-            message: "Profile Updated"
+
+            message:
+                "Profile Updated"
         });
+
 
     } catch (error) {
 
@@ -320,82 +472,144 @@ const updateProfile = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
+
 
 
 // ======================================================
 // BOOK APPOINTMENT
 // ======================================================
 
-const bookAppointment = async (req, res) => {
+const bookAppointment =
+async (req, res) => {
 
     try {
 
         const {
+
             userId,
+
             docId,
+
             slotDate,
+
             slotTime
+
         } = req.body;
+
 
         const docData =
             await doctorModel
-                .findById(docId)
-                .select("-password");
+                .findById(
+                    docId
+                )
+                .select(
+                    "-password"
+                );
+
 
         if (!docData) {
 
             return res.json({
+
                 success: false,
-                message: "Doctor not found"
+
+                message:
+                    "Doctor not found"
             });
         }
 
-        if (!docData.available) {
+
+        if (
+            !docData.available
+        ) {
 
             return res.json({
+
                 success: false,
-                message: "Doctor Not Available"
+
+                message:
+                    "Doctor Not Available"
             });
         }
 
-        let slots_booked =
-            docData.slots_booked || {};
 
-        if (slots_booked[slotDate]) {
+        let slots_booked =
+            docData.slots_booked ||
+            {};
+
+
+        if (
+            slots_booked[
+                slotDate
+            ]
+        ) {
 
             if (
-                slots_booked[slotDate]
-                    .includes(slotTime)
+                slots_booked[
+                    slotDate
+                ].includes(
+                    slotTime
+                )
             ) {
 
                 return res.json({
+
                     success: false,
-                    message: "Slot Not Available"
+
+                    message:
+                        "Slot Not Available"
                 });
 
             } else {
 
-                slots_booked[slotDate]
-                    .push(slotTime);
+                slots_booked[
+                    slotDate
+                ].push(
+                    slotTime
+                );
             }
 
         } else {
 
-            slots_booked[slotDate] = [
+            slots_booked[
+                slotDate
+            ] = [
                 slotTime
             ];
         }
 
+
         const userData =
             await userModel
-                .findById(userId)
-                .select("-password");
+                .findById(
+                    userId
+                )
+                .select(
+                    "-password"
+                );
+
+
+        if (!userData) {
+
+            return res.json({
+
+                success: false,
+
+                message:
+                    "User not found"
+            });
+        }
+
 
         const appointmentData = {
 
@@ -408,7 +622,9 @@ const bookAppointment = async (req, res) => {
             docData,
 
             amount:
-                Number(docData.fees),
+                Number(
+                    docData.fees
+                ),
 
             slotTime,
 
@@ -418,24 +634,61 @@ const bookAppointment = async (req, res) => {
                 Date.now()
         };
 
+
         const newAppointment =
             new appointmentModel(
                 appointmentData
             );
 
+
         await newAppointment.save();
 
-        await doctorModel.findByIdAndUpdate(
-            docId,
-            {
-                slots_booked
-            }
-        );
 
-        res.json({
-            success: true,
-            message: "Appointment Booked"
+        await doctorModel
+            .findByIdAndUpdate(
+
+                docId,
+
+                {
+                    slots_booked
+                }
+            );
+
+
+        await sendAppointmentEmail({
+
+            to:
+                userData.email,
+
+            userName:
+                userData.name,
+
+            type:
+                "booked",
+
+            doctorName:
+                docData.name,
+
+            speciality:
+                docData.speciality,
+
+            slotDate,
+
+            slotTime,
+
+            amount:
+                docData.fees
         });
+
+
+        return res.json({
+
+            success: true,
+
+            message:
+                "Appointment Booked"
+        });
+
 
     } catch (error) {
 
@@ -444,95 +697,217 @@ const bookAppointment = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
+
 
 
 // ======================================================
 // CANCEL APPOINTMENT
 // ======================================================
 
-const cancelAppointment = async (req, res) => {
+const cancelAppointment =
+async (req, res) => {
 
     try {
 
         const {
+
             userId,
+
             appointmentId
+
         } = req.body;
 
+
         const appointmentData =
-            await appointmentModel.findById(
-                appointmentId
-            );
+            await appointmentModel
+                .findById(
+                    appointmentId
+                );
+
 
         if (!appointmentData) {
 
             return res.json({
+
                 success: false,
-                message: "Appointment not found"
+
+                message:
+                    "Appointment not found"
             });
         }
 
+
         if (
-            String(appointmentData.userId) !==
-            String(userId)
+            String(
+                appointmentData.userId
+            ) !==
+            String(
+                userId
+            )
         ) {
 
             return res.json({
+
                 success: false,
-                message: "Unauthorized action"
+
+                message:
+                    "Unauthorized action"
             });
         }
 
-        await appointmentModel.findByIdAndUpdate(
-            appointmentId,
-            {
-                cancelled: true
-            }
-        );
+
+        if (
+            appointmentData.cancelled
+        ) {
+
+            return res.json({
+
+                success: false,
+
+                message:
+                    "Appointment already cancelled"
+            });
+        }
+
+
+        await appointmentModel
+            .findByIdAndUpdate(
+
+                appointmentId,
+
+                {
+                    cancelled:
+                        true
+                }
+            );
+
 
         const {
+
             docId,
+
             slotDate,
+
             slotTime
+
         } = appointmentData;
 
+
         const doctorData =
-            await doctorModel.findById(
-                docId
-            );
+            await doctorModel
+                .findById(
+                    docId
+                );
+
 
         if (doctorData) {
 
             let slots_booked =
-                doctorData.slots_booked || {};
+                doctorData
+                    .slots_booked ||
+                {};
 
-            if (slots_booked[slotDate]) {
 
-                slots_booked[slotDate] =
-                    slots_booked[slotDate]
-                        .filter(
-                            e => e !== slotTime
-                        );
+            if (
+                slots_booked[
+                    slotDate
+                ]
+            ) {
 
-                await doctorModel.findByIdAndUpdate(
-                    docId,
-                    {
-                        slots_booked
-                    }
-                );
+                slots_booked[
+                    slotDate
+                ] =
+                    slots_booked[
+                        slotDate
+                    ].filter(
+
+                        e =>
+                            e !==
+                            slotTime
+                    );
+
+
+                await doctorModel
+                    .findByIdAndUpdate(
+
+                        docId,
+
+                        {
+                            slots_booked
+                        }
+                    );
             }
         }
 
-        res.json({
+
+        const userData =
+            await userModel
+                .findById(
+                    userId
+                )
+                .select(
+                    "-password"
+                );
+
+
+        if (userData) {
+
+            await sendAppointmentEmail({
+
+                to:
+                    userData.email,
+
+                userName:
+                    userData.name,
+
+                type:
+                    "cancelled",
+
+                doctorName:
+                    appointmentData
+                        .docData
+                        ?.name ||
+                    doctorData
+                        ?.name ||
+                    "Doctor",
+
+                speciality:
+                    appointmentData
+                        .docData
+                        ?.speciality ||
+                    doctorData
+                        ?.speciality ||
+                    "N/A",
+
+                slotDate,
+
+                slotTime,
+
+                amount:
+                    appointmentData
+                        .amount
+            });
+        }
+
+
+        return res.json({
+
             success: true,
-            message: "Appointment Cancelled"
+
+            message:
+                "Appointment Cancelled"
         });
+
 
     } catch (error) {
 
@@ -541,177 +916,380 @@ const cancelAppointment = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
+
 
 
 // ======================================================
 // RESCHEDULE APPOINTMENT
 // ======================================================
 
-const rescheduleAppointment = async (req, res) => {
+const rescheduleAppointment =
+async (req, res) => {
 
     try {
 
         const {
+
             userId,
+
             appointmentId,
+
             slotDate,
+
             slotTime
+
         } = req.body;
 
-        if (!appointmentId || !slotDate || !slotTime) {
 
-            return res.status(400).json({
-                success: false,
-                message: "Appointment ID, date and time are required"
-            });
+        if (
+            !appointmentId ||
+            !slotDate ||
+            !slotTime
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Appointment ID, date and time are required"
+                });
         }
 
+
         const appointmentData =
-            await appointmentModel.findById(
-                appointmentId
-            );
+            await appointmentModel
+                .findById(
+                    appointmentId
+                );
+
 
         if (!appointmentData) {
 
-            return res.status(404).json({
-                success: false,
-                message: "Appointment not found"
-            });
+            return res
+                .status(404)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Appointment not found"
+                });
         }
+
 
         if (
-            String(appointmentData.userId) !==
-            String(userId)
+            String(
+                appointmentData
+                    .userId
+            ) !==
+            String(
+                userId
+            )
         ) {
 
-            return res.status(403).json({
-                success: false,
-                message: "Unauthorized action"
-            });
+            return res
+                .status(403)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unauthorized action"
+                });
         }
 
-        if (appointmentData.cancelled) {
-
-            return res.status(400).json({
-                success: false,
-                message: "Cancelled appointment cannot be rescheduled"
-            });
-        }
-
-        if (appointmentData.isCompleted) {
-
-            return res.status(400).json({
-                success: false,
-                message: "Completed appointment cannot be rescheduled"
-            });
-        }
 
         if (
-            appointmentData.slotDate === slotDate &&
-            appointmentData.slotTime === slotTime
+            appointmentData
+                .cancelled
         ) {
 
-            return res.status(400).json({
-                success: false,
-                message: "Please select a different appointment slot"
-            });
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Cancelled appointment cannot be rescheduled"
+                });
         }
+
+
+        if (
+            appointmentData
+                .isCompleted
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Completed appointment cannot be rescheduled"
+                });
+        }
+
+
+        if (
+            appointmentData
+                .slotDate ===
+                slotDate
+            &&
+            appointmentData
+                .slotTime ===
+                slotTime
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Please select a different appointment slot"
+                });
+        }
+
 
         const doctorData =
-            await doctorModel.findById(
-                appointmentData.docId
-            );
+            await doctorModel
+                .findById(
+                    appointmentData
+                        .docId
+                );
+
 
         if (!doctorData) {
 
-            return res.status(404).json({
-                success: false,
-                message: "Doctor not found"
-            });
+            return res
+                .status(404)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Doctor not found"
+                });
         }
 
-        if (!doctorData.available) {
 
-            return res.status(400).json({
-                success: false,
-                message: "Doctor is currently not available"
-            });
+        if (
+            !doctorData.available
+        ) {
+
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Doctor is currently not available"
+                });
         }
+
 
         const slots_booked =
             doctorData.slots_booked
-                ? JSON.parse(JSON.stringify(doctorData.slots_booked))
+
+                ? JSON.parse(
+                    JSON.stringify(
+                        doctorData
+                            .slots_booked
+                    )
+                )
+
                 : {};
 
+
         if (
-            slots_booked[slotDate] &&
-            slots_booked[slotDate].includes(slotTime)
+            slots_booked[
+                slotDate
+            ] &&
+            slots_booked[
+                slotDate
+            ].includes(
+                slotTime
+            )
         ) {
 
-            return res.status(409).json({
-                success: false,
-                message: "Selected slot is already booked"
-            });
+            return res
+                .status(409)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Selected slot is already booked"
+                });
         }
 
+
         const oldSlotDate =
-            appointmentData.slotDate;
+            appointmentData
+                .slotDate;
+
 
         const oldSlotTime =
-            appointmentData.slotTime;
+            appointmentData
+                .slotTime;
 
-        if (slots_booked[oldSlotDate]) {
 
-            slots_booked[oldSlotDate] =
-                slots_booked[oldSlotDate].filter(
-                    time => time !== oldSlotTime
+        if (
+            slots_booked[
+                oldSlotDate
+            ]
+        ) {
+
+            slots_booked[
+                oldSlotDate
+            ] =
+                slots_booked[
+                    oldSlotDate
+                ].filter(
+
+                    time =>
+                        time !==
+                        oldSlotTime
                 );
 
+
             if (
-                slots_booked[oldSlotDate].length === 0
+                slots_booked[
+                    oldSlotDate
+                ].length === 0
             ) {
-                delete slots_booked[oldSlotDate];
+
+                delete slots_booked[
+                    oldSlotDate
+                ];
             }
         }
 
-        if (slots_booked[slotDate]) {
 
-            slots_booked[slotDate].push(
+        if (
+            slots_booked[
+                slotDate
+            ]
+        ) {
+
+            slots_booked[
+                slotDate
+            ].push(
                 slotTime
             );
 
         } else {
 
-            slots_booked[slotDate] = [
+            slots_booked[
+                slotDate
+            ] = [
                 slotTime
             ];
         }
 
-        await doctorModel.findByIdAndUpdate(
-            appointmentData.docId,
-            {
-                slots_booked
-            }
-        );
 
-        await appointmentModel.findByIdAndUpdate(
-            appointmentId,
-            {
+        await doctorModel
+            .findByIdAndUpdate(
+
+                appointmentData
+                    .docId,
+
+                {
+                    slots_booked
+                }
+            );
+
+
+        await appointmentModel
+            .findByIdAndUpdate(
+
+                appointmentId,
+
+                {
+
+                    slotDate,
+
+                    slotTime
+                }
+            );
+
+
+        const userData =
+            await userModel
+                .findById(
+                    userId
+                )
+                .select(
+                    "-password"
+                );
+
+
+        if (userData) {
+
+            await sendAppointmentEmail({
+
+                to:
+                    userData.email,
+
+                userName:
+                    userData.name,
+
+                type:
+                    "rescheduled",
+
+                doctorName:
+                    doctorData.name,
+
+                speciality:
+                    doctorData
+                        .speciality,
+
                 slotDate,
-                slotTime
-            }
-        );
+
+                slotTime,
+
+                amount:
+                    appointmentData
+                        .amount
+            });
+        }
+
 
         return res.json({
+
             success: true,
-            message: "Appointment rescheduled successfully"
+
+            message:
+                "Appointment rescheduled successfully"
         });
+
 
     } catch (error) {
 
@@ -720,19 +1298,28 @@ const rescheduleAppointment = async (req, res) => {
             error
         );
 
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+
+        return res
+            .status(500)
+            .json({
+
+                success:
+                    false,
+
+                message:
+                    error.message
+            });
     }
 };
 
 
+
 // ======================================================
-// LIST USER APPOINTMENTS
+// LIST APPOINTMENTS
 // ======================================================
 
-const listAppointment = async (req, res) => {
+const listAppointment =
+async (req, res) => {
 
     try {
 
@@ -740,15 +1327,21 @@ const listAppointment = async (req, res) => {
             userId
         } = req.body;
 
-        const appointments =
-            await appointmentModel.find({
-                userId
-            });
 
-        res.json({
+        const appointments =
+            await appointmentModel
+                .find({
+                    userId
+                });
+
+
+        return res.json({
+
             success: true,
+
             appointments
         });
+
 
     } catch (error) {
 
@@ -757,149 +1350,190 @@ const listAppointment = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
+
             success: false,
-            message: error.message
+
+            message:
+                error.message
         });
     }
 };
 
 
+
 // ======================================================
-// RAZORPAY - CREATE ORDER
+// RAZORPAY CREATE ORDER
 // ======================================================
 
-const paymentRazorpay = async (req, res) => {
+const paymentRazorpay =
+async (req, res) => {
 
     try {
 
         const {
+
             userId,
+
             appointmentId
+
         } = req.body;
 
-        console.log(
-            "===================================="
-        );
-
-        console.log(
-            "RAZORPAY CREATE ORDER"
-        );
-
-        console.log(
-            "User:",
-            userId
-        );
-
-        console.log(
-            "Appointment:",
-            appointmentId
-        );
-
-        console.log(
-            "===================================="
-        );
 
         if (
-            !process.env.RAZORPAY_KEY_ID
+            !process.env
+                .RAZORPAY_KEY_ID
         ) {
 
-            console.error(
-                "RAZORPAY_KEY_ID IS MISSING"
-            );
+            return res
+                .status(500)
+                .json({
 
-            return res.status(500).json({
-                success: false,
-                message:
-                    "RAZORPAY_KEY_ID is missing on Render"
-            });
+                    success:
+                        false,
+
+                    message:
+                        "RAZORPAY_KEY_ID is missing on Render"
+                });
         }
+
 
         if (
-            !process.env.RAZORPAY_KEY_SECRET
+            !process.env
+                .RAZORPAY_KEY_SECRET
         ) {
 
-            console.error(
-                "RAZORPAY_KEY_SECRET IS MISSING"
-            );
+            return res
+                .status(500)
+                .json({
 
-            return res.status(500).json({
-                success: false,
-                message:
-                    "RAZORPAY_KEY_SECRET is missing on Render"
-            });
+                    success:
+                        false,
+
+                    message:
+                        "RAZORPAY_KEY_SECRET is missing on Render"
+                });
         }
+
 
         if (!userId) {
 
-            return res.status(400).json({
-                success: false,
-                message:
-                    "User ID is missing"
-            });
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "User ID is missing"
+                });
         }
+
 
         if (!appointmentId) {
 
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Appointment ID is missing"
-            });
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Appointment ID is missing"
+                });
         }
 
+
         const appointmentData =
-            await appointmentModel.findById(
-                appointmentId
-            );
+            await appointmentModel
+                .findById(
+                    appointmentId
+                );
+
 
         if (!appointmentData) {
 
-            return res.status(404).json({
-                success: false,
-                message:
-                    "Appointment not found"
-            });
+            return res
+                .status(404)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Appointment not found"
+                });
         }
+
 
         if (
-            String(appointmentData.userId) !==
-            String(userId)
+            String(
+                appointmentData
+                    .userId
+            ) !==
+            String(
+                userId
+            )
         ) {
 
-            return res.status(403).json({
-                success: false,
-                message:
-                    "Unauthorized payment request"
-            });
+            return res
+                .status(403)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Unauthorized payment request"
+                });
         }
+
 
         if (
-            appointmentData.cancelled
+            appointmentData
+                .cancelled
         ) {
 
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Appointment is cancelled"
-            });
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Appointment is cancelled"
+                });
         }
+
 
         if (
-            appointmentData.payment
+            appointmentData
+                .payment
         ) {
 
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Appointment is already paid"
-            });
+            return res
+                .status(400)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Appointment is already paid"
+                });
         }
+
 
         const appointmentAmount =
             Number(
-                appointmentData.amount
+                appointmentData
+                    .amount
             );
+
 
         if (
             !Number.isFinite(
@@ -908,30 +1542,35 @@ const paymentRazorpay = async (req, res) => {
             appointmentAmount <= 0
         ) {
 
-            console.error(
-                "INVALID APPOINTMENT AMOUNT:",
-                appointmentData.amount
-            );
+            return res
+                .status(400)
+                .json({
 
-            return res.status(400).json({
-                success: false,
-                message:
-                    "Invalid appointment amount"
-            });
+                    success:
+                        false,
+
+                    message:
+                        "Invalid appointment amount"
+                });
         }
+
 
         const amount =
             Math.round(
-                appointmentAmount * 100
+                appointmentAmount *
+                100
             );
+
 
         const currency =
             (
-                process.env.CURRENCY ||
+                process.env
+                    .CURRENCY ||
                 "INR"
             )
                 .trim()
                 .toUpperCase();
+
 
         const orderOptions = {
 
@@ -945,10 +1584,6 @@ const paymentRazorpay = async (req, res) => {
                 )
         };
 
-        console.log(
-            "Razorpay order options:",
-            orderOptions
-        );
 
         const order =
             await razorpayInstance
@@ -957,93 +1592,87 @@ const paymentRazorpay = async (req, res) => {
                     orderOptions
                 );
 
-        console.log(
-            "Razorpay order successfully created:",
-            {
-                id:
-                    order.id,
-
-                amount:
-                    order.amount,
-
-                currency:
-                    order.currency,
-
-                receipt:
-                    order.receipt
-            }
-        );
 
         return res.json({
 
             success: true,
 
             order
-
         });
+
 
     } catch (error) {
 
         console.error(
-            "===================================="
-        );
-
-        console.error(
-            "RAZORPAY CREATE ORDER ERROR"
-        );
-
-        console.error(
+            "RAZORPAY CREATE ORDER ERROR:",
             error
         );
 
-        console.error(
-            "===================================="
-        );
 
-        return res.status(500).json({
+        return res
+            .status(500)
+            .json({
 
-            success: false,
+                success:
+                    false,
 
-            message:
+                message:
 
-                error?.error?.description ||
+                    error?.error
+                        ?.description ||
 
-                error?.description ||
+                    error
+                        ?.description ||
 
-                error?.message ||
+                    error
+                        ?.message ||
 
-                "Razorpay order creation failed"
-
-        });
+                    "Razorpay order creation failed"
+            });
     }
 };
 
 
+
 // ======================================================
-// RAZORPAY - VERIFY PAYMENT
+// VERIFY RAZORPAY
 // ======================================================
 
-const verifyRazorpay = async (req, res) => {
+const verifyRazorpay =
+async (req, res) => {
 
     try {
 
         const {
+
             userId,
+
             razorpay_order_id,
+
             razorpay_payment_id,
+
             razorpay_signature
+
         } = req.body;
 
+
         if (
-            !process.env.RAZORPAY_KEY_SECRET
+            !process.env
+                .RAZORPAY_KEY_SECRET
         ) {
 
-            return res.status(500).json({
-                success: false,
-                message:
-                    "RAZORPAY_KEY_SECRET is missing on Render"
-            });
+            return res
+                .status(500)
+                .json({
+
+                    success:
+                        false,
+
+                    message:
+                        "RAZORPAY_KEY_SECRET is missing on Render"
+                });
         }
+
 
         if (
             !razorpay_order_id ||
@@ -1051,46 +1680,53 @@ const verifyRazorpay = async (req, res) => {
             !razorpay_signature
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Missing Razorpay payment verification details"
-
-            });
+                    message:
+                        "Missing Razorpay payment verification details"
+                });
         }
+
 
         const generatedSignature =
             crypto
                 .createHmac(
+
                     "sha256",
-                    process.env.RAZORPAY_KEY_SECRET
+
+                    process.env
+                        .RAZORPAY_KEY_SECRET
                 )
                 .update(
                     `${razorpay_order_id}|${razorpay_payment_id}`
                 )
-                .digest("hex");
+                .digest(
+                    "hex"
+                );
 
-        const signaturesMatch =
-            generatedSignature ===
-            razorpay_signature;
 
-        if (!signaturesMatch) {
+        if (
+            generatedSignature !==
+            razorpay_signature
+        ) {
 
-            console.error(
-                "Razorpay signature verification failed"
-            );
+            return res
+                .status(400)
+                .json({
 
-            return res.status(400).json({
+                    success:
+                        false,
 
-                success: false,
-
-                message:
-                    "Payment signature verification failed"
-
-            });
+                    message:
+                        "Payment signature verification failed"
+                });
         }
+
 
         const orderInfo =
             await razorpayInstance
@@ -1099,86 +1735,100 @@ const verifyRazorpay = async (req, res) => {
                     razorpay_order_id
                 );
 
+
         if (!orderInfo) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Razorpay order not found"
-
-            });
+                    message:
+                        "Razorpay order not found"
+                });
         }
+
 
         const appointmentId =
             orderInfo.receipt;
 
-        if (!appointmentId) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "Appointment ID missing from Razorpay order"
-
-            });
-        }
 
         const appointmentData =
-            await appointmentModel.findById(
-                appointmentId
-            );
+            await appointmentModel
+                .findById(
+                    appointmentId
+                );
+
 
         if (!appointmentData) {
 
-            return res.status(404).json({
+            return res
+                .status(404)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Appointment not found"
-
-            });
+                    message:
+                        "Appointment not found"
+                });
         }
+
 
         if (
-            String(appointmentData.userId) !==
-            String(userId)
+            String(
+                appointmentData
+                    .userId
+            ) !==
+            String(
+                userId
+            )
         ) {
 
-            return res.status(403).json({
+            return res
+                .status(403)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Unauthorized payment verification"
-
-            });
+                    message:
+                        "Unauthorized payment verification"
+                });
         }
+
 
         const expectedAmount =
             Math.round(
+
                 Number(
-                    appointmentData.amount
+                    appointmentData
+                        .amount
                 ) * 100
             );
 
+
         if (
-            Number(orderInfo.amount) !==
+            Number(
+                orderInfo.amount
+            ) !==
             expectedAmount
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Payment amount mismatch"
-
-            });
+                    message:
+                        "Payment amount mismatch"
+                });
         }
+
 
         const paymentInfo =
             await razorpayInstance
@@ -1187,125 +1837,94 @@ const verifyRazorpay = async (req, res) => {
                     razorpay_payment_id
                 );
 
-        console.log(
-            "Razorpay payment information:",
-            {
-                id:
-                    paymentInfo.id,
-
-                order_id:
-                    paymentInfo.order_id,
-
-                amount:
-                    paymentInfo.amount,
-
-                status:
-                    paymentInfo.status
-            }
-        );
 
         if (
             paymentInfo.order_id !==
             razorpay_order_id
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Payment does not belong to this order"
-
-            });
+                    message:
+                        "Payment does not belong to this order"
+                });
         }
+
 
         if (
-            Number(paymentInfo.amount) !==
-            Number(orderInfo.amount)
+            Number(
+                paymentInfo.amount
+            ) !==
+            Number(
+                orderInfo.amount
+            )
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    "Payment amount mismatch"
-
-            });
+                    message:
+                        "Payment amount mismatch"
+                });
         }
+
 
         if (
             paymentInfo.status ===
             "authorized"
         ) {
 
-            console.log(
-                "Payment authorized. Capturing..."
-            );
-
             await razorpayInstance
                 .payments
                 .capture(
+
                     razorpay_payment_id,
+
                     orderInfo.amount,
+
                     orderInfo.currency
                 );
 
-        } else if (
+        }
+
+        else if (
             paymentInfo.status !==
             "captured"
         ) {
 
-            return res.status(400).json({
+            return res
+                .status(400)
+                .json({
 
-                success: false,
+                    success:
+                        false,
 
-                message:
-                    `Payment was not captured. Current status: ${paymentInfo.status}`
-
-            });
+                    message:
+                        `Payment was not captured. Current status: ${paymentInfo.status}`
+                });
         }
 
-        await appointmentModel.findByIdAndUpdate(
 
-            appointmentId,
+        await appointmentModel
+            .findByIdAndUpdate(
 
-            {
-                payment: true
-            },
+                appointmentId,
 
-            {
-                new: true
-            }
+                {
+                    payment:
+                        true
+                }
+            );
 
-        );
-
-        console.log(
-            "===================================="
-        );
-
-        console.log(
-            "RAZORPAY PAYMENT SUCCESS"
-        );
-
-        console.log(
-            "Appointment:",
-            appointmentId
-        );
-
-        console.log(
-            "Order:",
-            razorpay_order_id
-        );
-
-        console.log(
-            "Payment:",
-            razorpay_payment_id
-        );
-
-        console.log(
-            "===================================="
-        );
 
         return res.json({
 
@@ -1313,51 +1932,48 @@ const verifyRazorpay = async (req, res) => {
 
             message:
                 "Payment Successful"
-
         });
+
 
     } catch (error) {
 
         console.error(
-            "===================================="
-        );
-
-        console.error(
-            "RAZORPAY VERIFY ERROR"
-        );
-
-        console.error(
+            "RAZORPAY VERIFY ERROR:",
             error
         );
 
-        console.error(
-            "===================================="
-        );
 
-        return res.status(500).json({
+        return res
+            .status(500)
+            .json({
 
-            success: false,
+                success:
+                    false,
 
-            message:
+                message:
 
-                error?.error?.description ||
+                    error?.error
+                        ?.description ||
 
-                error?.description ||
+                    error
+                        ?.description ||
 
-                error?.message ||
+                    error
+                        ?.message ||
 
-                "Payment verification failed"
-
-        });
+                    "Payment verification failed"
+            });
     }
 };
+
 
 
 // ======================================================
 // STRIPE PAYMENT
 // ======================================================
 
-const paymentStripe = async (req, res) => {
+const paymentStripe =
+async (req, res) => {
 
     try {
 
@@ -1365,18 +1981,23 @@ const paymentStripe = async (req, res) => {
             appointmentId
         } = req.body;
 
+
         const {
             origin
         } = req.headers;
 
+
         const appointmentData =
-            await appointmentModel.findById(
-                appointmentId
-            );
+            await appointmentModel
+                .findById(
+                    appointmentId
+                );
+
 
         if (
             !appointmentData ||
-            appointmentData.cancelled
+            appointmentData
+                .cancelled
         ) {
 
             return res.json({
@@ -1385,16 +2006,18 @@ const paymentStripe = async (req, res) => {
 
                 message:
                     "Appointment Cancelled or not found"
-
             });
         }
 
+
         const currency =
             (
-                process.env.CURRENCY ||
+                process.env
+                    .CURRENCY ||
                 "INR"
             )
                 .toLowerCase();
+
 
         const line_items = [
 
@@ -1408,23 +2031,23 @@ const paymentStripe = async (req, res) => {
 
                         name:
                             "Appointment Fees"
-
                     },
 
                     unit_amount:
                         Math.round(
+
                             Number(
-                                appointmentData.amount
+                                appointmentData
+                                    .amount
                             ) * 100
                         )
-
                 },
 
                 quantity: 1
-
             }
 
         ];
+
 
         const session =
             await stripeInstance
@@ -1442,17 +2065,17 @@ const paymentStripe = async (req, res) => {
 
                     mode:
                         "payment"
-
                 });
 
-        res.json({
+
+        return res.json({
 
             success: true,
 
             session_url:
                 session.url
-
         });
+
 
     } catch (error) {
 
@@ -1461,33 +2084,40 @@ const paymentStripe = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
 
             success: false,
 
             message:
                 error.message
-
         });
     }
 };
+
 
 
 // ======================================================
 // VERIFY STRIPE
 // ======================================================
 
-const verifyStripe = async (req, res) => {
+const verifyStripe =
+async (req, res) => {
 
     try {
 
         const {
+
             appointmentId,
+
             success
+
         } = req.body;
 
+
         if (
-            success === "true"
+            success ===
+            "true"
         ) {
 
             await appointmentModel
@@ -1496,10 +2126,11 @@ const verifyStripe = async (req, res) => {
                     appointmentId,
 
                     {
-                        payment: true
+                        payment:
+                            true
                     }
-
                 );
+
 
             return res.json({
 
@@ -1507,18 +2138,18 @@ const verifyStripe = async (req, res) => {
 
                 message:
                     "Payment Successful"
-
             });
         }
 
-        res.json({
+
+        return res.json({
 
             success: false,
 
             message:
                 "Payment Failed"
-
         });
+
 
     } catch (error) {
 
@@ -1527,16 +2158,17 @@ const verifyStripe = async (req, res) => {
             error
         );
 
-        res.json({
+
+        return res.json({
 
             success: false,
 
             message:
                 error.message
-
         });
     }
 };
+
 
 
 // ======================================================
@@ -1568,5 +2200,4 @@ export {
     paymentStripe,
 
     verifyStripe
-
 };

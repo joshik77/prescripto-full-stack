@@ -193,6 +193,19 @@ const MyAppointments = () => {
 
 
     // ==================================================
+    // RESCHEDULE APPOINTMENT
+    // ==================================================
+
+    const rescheduleAppointment = (item) => {
+        navigate(`/appointment/${item.docId}`, {
+            state: {
+                rescheduleId: item._id
+            }
+        })
+    }
+
+
+    // ==================================================
     // RAZORPAY CHECKOUT
     // ==================================================
 
@@ -863,6 +876,24 @@ const MyAppointments = () => {
                                             className='sm:min-w-48 py-2 border border-green-500 rounded text-green-500'
                                         >
                                             Completed
+                                        </button>
+                                    )
+                                }
+
+
+                                {
+                                    !item.cancelled &&
+                                    !item.isCompleted && (
+
+                                        <button
+                                            onClick={() =>
+                                                rescheduleAppointment(
+                                                    item
+                                                )
+                                            }
+                                            className='text-[#696969] sm:min-w-48 py-2 border rounded hover:bg-primary hover:text-white transition-all duration-300'
+                                        >
+                                            Reschedule appointment
                                         </button>
                                     )
                                 }

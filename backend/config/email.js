@@ -1,4 +1,8 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+const resend = new Resend(
+    process.env.RESEND_API_KEY
+);
 
 const formatAppointmentDate = (slotDate) => {
 
@@ -30,36 +34,6 @@ const formatAppointmentDate = (slotDate) => {
 };
 
 
-const createTransporter = () => {
-
-    if (
-        !process.env.EMAIL_USER ||
-        !process.env.EMAIL_PASS
-    ) {
-
-        console.log(
-            "Email credentials are not configured"
-        );
-
-        return null;
-    }
-
-    return nodemailer.createTransport({
-
-        service: "gmail",
-
-        auth: {
-
-            user:
-                process.env.EMAIL_USER,
-
-            pass:
-                process.env.EMAIL_PASS
-        }
-    });
-};
-
-
 const sendAppointmentEmail = async ({
     to,
     userName,
@@ -73,32 +47,37 @@ const sendAppointmentEmail = async ({
 
     try {
 
-        if (!to) {
+        if (!process.env.RESEND_API_KEY) {
 
-            console.log(
-                "Email not sent: patient email missing"
+            console.error(
+                "EMAIL ERROR: RESEND_API_KEY is missing"
             );
 
             return false;
         }
 
-        const transporter =
-            createTransporter();
 
-        if (!transporter) {
+        if (!to) {
+
+            console.error(
+                "EMAIL ERROR: Patient email is missing"
+            );
 
             return false;
         }
+
 
         const formattedDate =
             formatAppointmentDate(
                 slotDate
             );
 
+
         let subject = "";
         let title = "";
         let message = "";
         let statusColor = "#5f6FFF";
+
 
         if (type === "booked") {
 
@@ -114,6 +93,7 @@ const sendAppointmentEmail = async ({
             statusColor =
                 "#16a34a";
         }
+
 
         else if (
             type === "rescheduled"
@@ -132,6 +112,7 @@ const sendAppointmentEmail = async ({
                 "#5f6FFF";
         }
 
+
         else if (
             type === "cancelled"
         ) {
@@ -149,6 +130,7 @@ const sendAppointmentEmail = async ({
                 "#dc2626";
         }
 
+
         else {
 
             subject =
@@ -161,220 +143,253 @@ const sendAppointmentEmail = async ({
                 "There has been an update to your appointment.";
         }
 
-        const mailOptions = {
 
-            from:
-                `"Prescripto" <${process.env.EMAIL_USER}>`,
+        const { data, error } =
+            await resend.emails.send({
 
-            to,
+                from:
+                    process.env.RESEND_FROM_EMAIL ||
+                    "Prescripto <onboarding@resend.dev>",
 
-            subject,
+                to: [
+                    to
+                ],
 
-            html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8" />
-            </head>
+                subject,
 
-            <body style="
-                margin:0;
-                padding:0;
-                background-color:#f5f5f5;
-                font-family:Arial, Helvetica, sans-serif;
-            ">
+                html: `
+                <!DOCTYPE html>
 
-                <div style="
-                    max-width:600px;
-                    margin:30px auto;
-                    background:white;
-                    border-radius:12px;
-                    overflow:hidden;
-                    box-shadow:0 2px 10px rgba(0,0,0,0.08);
-                ">
+                <html>
 
-                    <div style="
-                        background:#5f6FFF;
-                        padding:25px;
-                        text-align:center;
-                        color:white;
-                    ">
+                <head>
+                    <meta charset="UTF-8" />
+                </head>
 
-                        <h1 style="
-                            margin:0;
-                            font-size:28px;
-                        ">
-                            Prescripto
-                        </h1>
+                <body
+                    style="
+                        margin:0;
+                        padding:0;
+                        background-color:#f5f5f5;
+                        font-family:Arial, Helvetica, sans-serif;
+                    "
+                >
 
-                        <p style="
-                            margin:8px 0 0;
-                        ">
-                            Doctor Appointment Platform
-                        </p>
+                    <div
+                        style="
+                            max-width:600px;
+                            margin:30px auto;
+                            background:white;
+                            border-radius:12px;
+                            overflow:hidden;
+                            box-shadow:0 2px 10px rgba(0,0,0,0.08);
+                        "
+                    >
 
-                    </div>
+                        <div
+                            style="
+                                background:#5f6FFF;
+                                padding:25px;
+                                text-align:center;
+                                color:white;
+                            "
+                        >
 
+                            <h1
+                                style="
+                                    margin:0;
+                                    font-size:28px;
+                                "
+                            >
+                                Prescripto
+                            </h1>
 
-                    <div style="
-                        padding:30px;
-                    ">
-
-                        <h2 style="
-                            color:${statusColor};
-                            margin-top:0;
-                        ">
-                            ${title}
-                        </h2>
-
-
-                        <p style="
-                            color:#444;
-                            font-size:16px;
-                        ">
-                            Hello ${userName || "Patient"},
-                        </p>
-
-
-                        <p style="
-                            color:#555;
-                            line-height:1.6;
-                        ">
-                            ${message}
-                        </p>
-
-
-                        <div style="
-                            background:#f8f9ff;
-                            border-radius:10px;
-                            padding:20px;
-                            margin-top:25px;
-                        ">
-
-                            <p style="
-                                margin:8px 0;
-                            ">
-                                <strong>Doctor:</strong>
-                                ${doctorName}
+                            <p
+                                style="
+                                    margin:8px 0 0;
+                                "
+                            >
+                                Doctor Appointment Platform
                             </p>
 
-                            <p style="
-                                margin:8px 0;
-                            ">
-                                <strong>Speciality:</strong>
-                                ${speciality || "N/A"}
+                        </div>
+
+
+                        <div
+                            style="
+                                padding:30px;
+                            "
+                        >
+
+                            <h2
+                                style="
+                                    color:${statusColor};
+                                    margin-top:0;
+                                "
+                            >
+                                ${title}
+                            </h2>
+
+
+                            <p
+                                style="
+                                    color:#444;
+                                    font-size:16px;
+                                "
+                            >
+                                Hello ${userName || "Patient"},
                             </p>
 
-                            <p style="
-                                margin:8px 0;
-                            ">
-                                <strong>Date:</strong>
-                                ${formattedDate}
+
+                            <p
+                                style="
+                                    color:#555;
+                                    line-height:1.6;
+                                "
+                            >
+                                ${message}
                             </p>
 
-                            <p style="
-                                margin:8px 0;
-                            ">
-                                <strong>Time:</strong>
-                                ${slotTime}
-                            </p>
+
+                            <div
+                                style="
+                                    background:#f8f9ff;
+                                    border-radius:10px;
+                                    padding:20px;
+                                    margin-top:25px;
+                                "
+                            >
+
+                                <p style="margin:8px 0;">
+                                    <strong>Doctor:</strong>
+                                    ${doctorName}
+                                </p>
+
+                                <p style="margin:8px 0;">
+                                    <strong>Speciality:</strong>
+                                    ${speciality || "N/A"}
+                                </p>
+
+                                <p style="margin:8px 0;">
+                                    <strong>Date:</strong>
+                                    ${formattedDate}
+                                </p>
+
+                                <p style="margin:8px 0;">
+                                    <strong>Time:</strong>
+                                    ${slotTime}
+                                </p>
+
+                                ${
+                                    amount
+                                        ? `
+                                        <p style="margin:8px 0;">
+                                            <strong>Consultation Fee:</strong>
+                                            ₹${amount}
+                                        </p>
+                                        `
+                                        : ""
+                                }
+
+                            </div>
+
 
                             ${
-                                amount
+                                type === "booked"
                                     ? `
-                                    <p style="
-                                        margin:8px 0;
-                                    ">
-                                        <strong>Consultation Fee:</strong>
-                                        ₹${amount}
+                                    <p
+                                        style="
+                                            color:#666;
+                                            margin-top:25px;
+                                            line-height:1.5;
+                                        "
+                                    >
+                                        Please arrive on time for your appointment.
+                                        You can manage your appointment from the
+                                        My Appointments section of Prescripto.
                                     </p>
                                     `
                                     : ""
                             }
 
+
+                            ${
+                                type === "rescheduled"
+                                    ? `
+                                    <p
+                                        style="
+                                            color:#666;
+                                            margin-top:25px;
+                                        "
+                                    >
+                                        Please note the updated appointment
+                                        date and time shown above.
+                                    </p>
+                                    `
+                                    : ""
+                            }
+
+
+                            <p
+                                style="
+                                    color:#777;
+                                    margin-top:30px;
+                                    font-size:14px;
+                                "
+                            >
+                                Thank you for using Prescripto.
+                            </p>
+
                         </div>
 
 
-                        ${
-                            type === "booked"
-                                ? `
-                                <p style="
-                                    color:#666;
-                                    margin-top:25px;
-                                    line-height:1.5;
-                                ">
-                                    Please arrive on time for your appointment.
-                                    You can manage your appointment from the
-                                    My Appointments section of Prescripto.
-                                </p>
-                                `
-                                : ""
-                        }
+                        <div
+                            style="
+                                background:#f5f5f5;
+                                padding:15px;
+                                text-align:center;
+                                color:#888;
+                                font-size:12px;
+                            "
+                        >
 
+                            This is an automated email from Prescripto.
 
-                        ${
-                            type === "rescheduled"
-                                ? `
-                                <p style="
-                                    color:#666;
-                                    margin-top:25px;
-                                ">
-                                    Please note the updated appointment
-                                    date and time shown above.
-                                </p>
-                                `
-                                : ""
-                        }
-
-
-                        <p style="
-                            color:#777;
-                            margin-top:30px;
-                            font-size:14px;
-                        ">
-                            Thank you for using Prescripto.
-                        </p>
+                        </div>
 
                     </div>
 
+                </body>
 
-                    <div style="
-                        background:#f5f5f5;
-                        padding:15px;
-                        text-align:center;
-                        color:#888;
-                        font-size:12px;
-                    ">
-
-                        This is an automated email from Prescripto.
-
-                    </div>
-
-                </div>
-
-            </body>
-            </html>
-            `
-        };
+                </html>
+                `
+            });
 
 
-        const info =
-            await transporter.sendMail(
-                mailOptions
+        if (error) {
+
+            console.error(
+                "RESEND EMAIL ERROR:",
+                error
             );
+
+            return false;
+        }
 
 
         console.log(
             "EMAIL SENT SUCCESSFULLY:",
-            info.messageId
+            data?.id
         );
 
+
         return true;
+
 
     } catch (error) {
 
         console.error(
-            "EMAIL SENDING ERROR:",
+            "RESEND EMAIL ERROR:",
             error.message
         );
 

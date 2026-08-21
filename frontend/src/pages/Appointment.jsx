@@ -1,276 +1,1163 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { AppContext } from '../context/AppContext'
-import { assets } from '../assets/assets'
-import RelatedDoctors from '../components/RelatedDoctors'
-import axios from 'axios'
-import { toast } from 'react-toastify'
+import React, {
+    useContext,
+    useEffect,
+    useState
+} from "react";
+
+import {
+    useLocation,
+    useNavigate,
+    useParams
+} from "react-router-dom";
+
+import {
+    AppContext
+} from "../context/AppContext";
+
+import {
+    assets
+} from "../assets/assets";
+
+import RelatedDoctors
+    from "../components/RelatedDoctors";
+
+import axios from "axios";
+
+import {
+    toast
+} from "react-toastify";
+
 
 const Appointment = () => {
 
-    const { docId } = useParams()
-    const location = useLocation()
-    const navigate = useNavigate()
+    const { docId } =
+        useParams();
 
-    const rescheduleId = location.state?.rescheduleId || null
+    const location =
+        useLocation();
 
-    const { doctors, currencySymbol, backendUrl, token, getDoctosData } = useContext(AppContext)
-    const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+    const navigate =
+        useNavigate();
 
-    const [docInfo, setDocInfo] = useState(false)
-    const [docSlots, setDocSlots] = useState([])
-    const [slotIndex, setSlotIndex] = useState(0)
-    const [slotTime, setSlotTime] = useState('')
+    const rescheduleId =
+        location.state?.rescheduleId ||
+        null;
 
-    const fetchDocInfo = async () => {
-        const doctor = doctors.find((doc) => doc._id === docId)
-        setDocInfo(doctor)
-    }
+    const {
+        doctors,
+        currencySymbol,
+        backendUrl,
+        token,
+        getDoctosData
+    } = useContext(AppContext);
 
-    const getAvailableSolts = async () => {
 
-        setDocSlots([])
-        setSlotIndex(0)
-        setSlotTime('')
+    const daysOfWeek = [
+        "SUN",
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT"
+    ];
 
-        let today = new Date()
 
-        for (let i = 0; i < 7; i++) {
+    const dayKeys = [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+    ];
 
-            let currentDate = new Date(today)
-            currentDate.setDate(today.getDate() + i)
 
-            let endTime = new Date()
-            endTime.setDate(today.getDate() + i)
-            endTime.setHours(21, 0, 0, 0)
+    const defaultWorkingHours = {
 
-            if (today.getDate() === currentDate.getDate()) {
-                currentDate.setHours(currentDate.getHours() > 10 ? currentDate.getHours() + 1 : 10)
-                currentDate.setMinutes(currentDate.getMinutes() > 30 ? 30 : 0)
-            } else {
-                currentDate.setHours(10)
-                currentDate.setMinutes(0)
+        sunday: {
+            enabled: false,
+            startTime: "10:00",
+            endTime: "21:00"
+        },
+
+        monday: {
+            enabled: true,
+            startTime: "10:00",
+            endTime: "21:00"
+        },
+
+        tuesday: {
+            enabled: true,
+            startTime: "10:00",
+            endTime: "21:00"
+        },
+
+        wednesday: {
+            enabled: true,
+            startTime: "10:00",
+            endTime: "21:00"
+        },
+
+        thursday: {
+            enabled: true,
+            startTime: "10:00",
+            endTime: "21:00"
+        },
+
+        friday: {
+            enabled: true,
+            startTime: "10:00",
+            endTime: "21:00"
+        },
+
+        saturday: {
+            enabled: true,
+            startTime: "10:00",
+            endTime: "21:00"
+        }
+    };
+
+
+    const [docInfo, setDocInfo] =
+        useState(false);
+
+    const [docSlots, setDocSlots] =
+        useState([]);
+
+    const [slotIndex, setSlotIndex] =
+        useState(0);
+
+    const [slotTime, setSlotTime] =
+        useState("");
+
+
+    const fetchDocInfo = () => {
+
+        const doctor =
+            doctors.find(
+                doc =>
+                    doc._id === docId
+            );
+
+        setDocInfo(doctor);
+    };
+
+
+    const getSlotDateString = (
+        date
+    ) => {
+
+        const day =
+            date.getDate();
+
+        const month =
+            date.getMonth() + 1;
+
+        const year =
+            date.getFullYear();
+
+        return (
+            day +
+            "_" +
+            month +
+            "_" +
+            year
+        );
+    };
+
+
+    const convertTimeToMinutes = (
+        time
+    ) => {
+
+        const [
+            hours,
+            minutes
+        ] = time.split(":");
+
+        return (
+            Number(hours) * 60 +
+            Number(minutes)
+        );
+    };
+
+
+    const formatMinutesToTime = (
+        totalMinutes
+    ) => {
+
+        const hours =
+            Math.floor(
+                totalMinutes / 60
+            );
+
+        const minutes =
+            totalMinutes % 60;
+
+        const date =
+            new Date();
+
+        date.setHours(
+            hours,
+            minutes,
+            0,
+            0
+        );
+
+        return date.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
             }
+        );
+    };
 
-            let timeSlots = []
 
-            while (currentDate < endTime) {
+    const getAvailableSolts = () => {
 
-                let formattedTime = currentDate.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })
-
-                let day = currentDate.getDate()
-                let month = currentDate.getMonth() + 1
-                let year = currentDate.getFullYear()
-
-                const slotDate = day + '_' + month + '_' + year
-                const currentSlotTime = formattedTime
-
-                const isSlotAvailable =
-                    docInfo.slots_booked[slotDate] &&
-                    docInfo.slots_booked[slotDate].includes(currentSlotTime)
-                        ? false
-                        : true
-
-                if (isSlotAvailable) {
-                    timeSlots.push({
-                        datetime: new Date(currentDate),
-                        time: formattedTime
-                    })
-                }
-
-                currentDate.setMinutes(currentDate.getMinutes() + 30)
-            }
-
-            setDocSlots(prev => [...prev, timeSlots])
-        }
-    }
-
-    const submitAppointment = async () => {
-
-        if (!token) {
-            toast.warning('Login to book appointment')
-            return navigate('/login')
+        if (!docInfo) {
+            return;
         }
 
-        if (!slotTime) {
-            toast.warning('Please select an appointment time')
-            return
-        }
+        const generatedSlots = [];
 
-        if (!docSlots[slotIndex] || !docSlots[slotIndex][0]) {
-            toast.error('No appointment slots available for this date')
-            return
-        }
+        const today =
+            new Date();
 
-        const date = docSlots[slotIndex][0].datetime
+        const workingHours =
+            docInfo.workingHours &&
+            Object.keys(
+                docInfo.workingHours
+            ).length > 0
+                ? docInfo.workingHours
+                : defaultWorkingHours;
 
-        let day = date.getDate()
-        let month = date.getMonth() + 1
-        let year = date.getFullYear()
+        const leaveDates =
+            docInfo.leaveDates || [];
 
-        const slotDate = day + '_' + month + '_' + year
 
-        try {
+        // Shows the next 14 calendar days.
+        // Only the doctor's actual working
+        // days will contain appointment slots.
+        for (
+            let i = 0;
+            i < 14;
+            i++
+        ) {
 
-            if (rescheduleId) {
+            const currentDate =
+                new Date(today);
 
-                const { data } = await axios.post(
-                    backendUrl + '/api/user/reschedule-appointment',
-                    {
-                        appointmentId: rescheduleId,
-                        slotDate,
-                        slotTime
-                    },
-                    {
-                        headers: { token }
+            currentDate.setDate(
+                today.getDate() + i
+            );
+
+            currentDate.setHours(
+                0,
+                0,
+                0,
+                0
+            );
+
+
+            const dayKey =
+                dayKeys[
+                    currentDate.getDay()
+                ];
+
+
+            const schedule =
+                workingHours[dayKey] ||
+                defaultWorkingHours[dayKey];
+
+
+            const slotDate =
+                getSlotDateString(
+                    currentDate
+                );
+
+
+            const isLeaveDate =
+                leaveDates.includes(
+                    slotDate
+                );
+
+
+            const timeSlots = [];
+
+
+            if (
+                schedule?.enabled &&
+                !isLeaveDate
+            ) {
+
+                const startMinutes =
+                    convertTimeToMinutes(
+                        schedule.startTime
+                    );
+
+                const endMinutes =
+                    convertTimeToMinutes(
+                        schedule.endTime
+                    );
+
+
+                for (
+                    let minutes =
+                        startMinutes;
+
+                    minutes <
+                        endMinutes;
+
+                    minutes += 30
+                ) {
+
+                    const slotDateTime =
+                        new Date(
+                            currentDate
+                        );
+
+                    slotDateTime.setHours(
+                        Math.floor(
+                            minutes / 60
+                        ),
+                        minutes % 60,
+                        0,
+                        0
+                    );
+
+
+                    // Don't show appointment
+                    // times that have already passed.
+                    if (
+                        slotDateTime <=
+                        new Date()
+                    ) {
+                        continue;
                     }
-                )
 
-                if (data.success) {
-                    toast.success(data.message)
-                    await getDoctosData()
-                    navigate('/my-appointments', { replace: true })
-                } else {
-                    toast.error(data.message)
-                }
 
-            } else {
+                    const formattedTime =
+                        formatMinutesToTime(
+                            minutes
+                        );
 
-                const { data } = await axios.post(
-                    backendUrl + '/api/user/book-appointment',
-                    {
-                        docId,
-                        slotDate,
-                        slotTime
-                    },
-                    {
-                        headers: { token }
+
+                    const bookedSlots =
+                        docInfo
+                            .slots_booked?.[
+                                slotDate
+                            ] || [];
+
+
+                    const isBooked =
+                        bookedSlots.includes(
+                            formattedTime
+                        );
+
+
+                    if (!isBooked) {
+
+                        timeSlots.push({
+
+                            datetime:
+                                new Date(
+                                    slotDateTime
+                                ),
+
+                            time:
+                                formattedTime,
+
+                            slotDate
+                        });
                     }
-                )
-
-                if (data.success) {
-                    toast.success(data.message)
-                    await getDoctosData()
-                    navigate('/my-appointments')
-                } else {
-                    toast.error(data.message)
                 }
             }
 
-        } catch (error) {
-            console.log(error)
-            toast.error(error.response?.data?.message || error.message)
+
+            generatedSlots.push({
+
+                date:
+                    new Date(
+                        currentDate
+                    ),
+
+                slotDate,
+
+                dayKey,
+
+                isLeaveDate,
+
+                workingDay:
+                    Boolean(
+                        schedule?.enabled
+                    ),
+
+                slots:
+                    timeSlots
+            });
         }
-    }
+
+
+        setDocSlots(
+            generatedSlots
+        );
+
+
+        const firstAvailableIndex =
+            generatedSlots.findIndex(
+                day =>
+                    day.slots.length > 0
+            );
+
+
+        setSlotIndex(
+            firstAvailableIndex >= 0
+                ? firstAvailableIndex
+                : 0
+        );
+
+        setSlotTime("");
+    };
+
+
+    const submitAppointment =
+        async () => {
+
+            if (!token) {
+
+                toast.warning(
+                    "Login to book appointment"
+                );
+
+                return navigate(
+                    "/login"
+                );
+            }
+
+
+            if (!docInfo.available) {
+
+                toast.warning(
+                    "Doctor is currently unavailable"
+                );
+
+                return;
+            }
+
+
+            if (!slotTime) {
+
+                toast.warning(
+                    "Please select an appointment time"
+                );
+
+                return;
+            }
+
+
+            const selectedDay =
+                docSlots[slotIndex];
+
+
+            if (
+                !selectedDay ||
+                selectedDay.slots.length === 0
+            ) {
+
+                toast.error(
+                    "No appointment slots available for this date"
+                );
+
+                return;
+            }
+
+
+            const slotDate =
+                selectedDay.slotDate;
+
+
+            try {
+
+                if (rescheduleId) {
+
+                    const { data } =
+                        await axios.post(
+
+                            backendUrl +
+                            "/api/user/reschedule-appointment",
+
+                            {
+                                appointmentId:
+                                    rescheduleId,
+
+                                slotDate,
+
+                                slotTime
+                            },
+
+                            {
+                                headers: {
+                                    token
+                                }
+                            }
+                        );
+
+
+                    if (data.success) {
+
+                        toast.success(
+                            data.message
+                        );
+
+                        await getDoctosData();
+
+                        navigate(
+                            "/my-appointments",
+                            {
+                                replace: true
+                            }
+                        );
+
+                    } else {
+
+                        toast.error(
+                            data.message
+                        );
+                    }
+
+                } else {
+
+                    const { data } =
+                        await axios.post(
+
+                            backendUrl +
+                            "/api/user/book-appointment",
+
+                            {
+                                docId,
+                                slotDate,
+                                slotTime
+                            },
+
+                            {
+                                headers: {
+                                    token
+                                }
+                            }
+                        );
+
+
+                    if (data.success) {
+
+                        toast.success(
+                            data.message
+                        );
+
+                        await getDoctosData();
+
+                        navigate(
+                            "/my-appointments"
+                        );
+
+                    } else {
+
+                        toast.error(
+                            data.message
+                        );
+                    }
+                }
+
+            } catch (error) {
+
+                console.log(error);
+
+                toast.error(
+                    error.response
+                        ?.data
+                        ?.message ||
+                    error.message
+                );
+            }
+        };
+
 
     useEffect(() => {
-        if (doctors.length > 0) {
-            fetchDocInfo()
+
+        if (
+            doctors.length > 0
+        ) {
+
+            fetchDocInfo();
         }
-    }, [doctors, docId])
+
+    }, [
+        doctors,
+        docId
+    ]);
+
 
     useEffect(() => {
+
         if (docInfo) {
-            getAvailableSolts()
+
+            getAvailableSolts();
         }
-    }, [docInfo])
+
+    }, [docInfo]);
+
 
     return docInfo ? (
+
         <div>
 
-            <div className='flex flex-col sm:flex-row gap-4'>
+
+            <div
+                className="
+                    flex
+                    flex-col
+                    sm:flex-row
+                    gap-4
+                "
+            >
+
                 <div>
-                    <img className='bg-primary w-full sm:max-w-72 rounded-lg' src={docInfo.image} alt="" />
+
+                    <img
+                        className="
+                            bg-primary
+                            w-full
+                            sm:max-w-72
+                            rounded-lg
+                        "
+                        src={docInfo.image}
+                        alt=""
+                    />
+
                 </div>
 
-                <div className='flex-1 border border-[#ADADAD] rounded-lg p-8 py-7 bg-white mx-2 sm:mx-0 mt-[-80px] sm:mt-0'>
 
-                    <p className='flex items-center gap-2 text-3xl font-medium text-gray-700'>
+                <div
+                    className="
+                        flex-1
+                        border
+                        border-[#ADADAD]
+                        rounded-lg
+                        p-8
+                        py-7
+                        bg-white
+                        mx-2
+                        sm:mx-0
+                        mt-[-80px]
+                        sm:mt-0
+                    "
+                >
+
+                    <p
+                        className="
+                            flex
+                            items-center
+                            gap-2
+                            text-3xl
+                            font-medium
+                            text-gray-700
+                        "
+                    >
+
                         {docInfo.name}
-                        <img className='w-5' src={assets.verified_icon} alt="" />
+
+                        <img
+                            className="w-5"
+                            src={
+                                assets.verified_icon
+                            }
+                            alt=""
+                        />
+
                     </p>
 
-                    <div className='flex items-center gap-2 mt-1 text-gray-600'>
-                        <p>{docInfo.degree} - {docInfo.speciality}</p>
-                        <button className='py-0.5 px-2 border text-xs rounded-full'>{docInfo.experience}</button>
+
+                    <div
+                        className="
+                            flex
+                            items-center
+                            gap-2
+                            mt-1
+                            text-gray-600
+                        "
+                    >
+
+                        <p>
+                            {docInfo.degree}
+                            {" - "}
+                            {docInfo.speciality}
+                        </p>
+
+                        <button
+                            className="
+                                py-0.5
+                                px-2
+                                border
+                                text-xs
+                                rounded-full
+                            "
+                        >
+                            {docInfo.experience}
+                        </button>
+
                     </div>
+
 
                     <div>
-                        <p className='flex items-center gap-1 text-sm font-medium text-[#262626] mt-3'>
+
+                        <p
+                            className="
+                                flex
+                                items-center
+                                gap-1
+                                text-sm
+                                font-medium
+                                text-[#262626]
+                                mt-3
+                            "
+                        >
+
                             About
-                            <img className='w-3' src={assets.info_icon} alt="" />
+
+                            <img
+                                className="w-3"
+                                src={
+                                    assets.info_icon
+                                }
+                                alt=""
+                            />
+
                         </p>
-                        <p className='text-sm text-gray-600 max-w-[700px] mt-1'>{docInfo.about}</p>
+
+
+                        <p
+                            className="
+                                text-sm
+                                text-gray-600
+                                max-w-[700px]
+                                mt-1
+                            "
+                        >
+                            {docInfo.about}
+                        </p>
+
                     </div>
 
-                    <p className='text-gray-600 font-medium mt-4'>
-                        Appointment fee: <span className='text-gray-800'>{currencySymbol}{docInfo.fees}</span>
+
+                    <p
+                        className="
+                            text-gray-600
+                            font-medium
+                            mt-4
+                        "
+                    >
+
+                        Appointment fee:{" "}
+
+                        <span
+                            className="
+                                text-gray-800
+                            "
+                        >
+                            {currencySymbol}
+                            {docInfo.fees}
+                        </span>
+
                     </p>
+
+
+                    <div
+                        className="
+                            mt-3
+                        "
+                    >
+
+                        {
+                            docInfo.available
+                                ? (
+                                    <p
+                                        className="
+                                            text-green-600
+                                            text-sm
+                                        "
+                                    >
+                                        ● Currently accepting appointments
+                                    </p>
+                                )
+                                : (
+                                    <p
+                                        className="
+                                            text-red-500
+                                            text-sm
+                                        "
+                                    >
+                                        ● Doctor is currently unavailable
+                                    </p>
+                                )
+                        }
+
+                    </div>
+
                 </div>
+
             </div>
 
-            <div className='sm:ml-72 sm:pl-4 mt-8 font-medium text-[#565656]'>
 
-                <p>{rescheduleId ? 'Select a new appointment slot' : 'Booking slots'}</p>
+            <div
+                className="
+                    sm:ml-72
+                    sm:pl-4
+                    mt-8
+                    font-medium
+                    text-[#565656]
+                "
+            >
 
-                {rescheduleId && (
-                    <p className='text-sm font-normal text-gray-500 mt-1'>
-                        Choose a new date and time for your appointment.
-                    </p>
-                )}
+                <p>
 
-                <div className='flex gap-3 items-center w-full overflow-x-scroll mt-4'>
-                    {docSlots.length > 0 && docSlots.map((item, index) => (
-                        <div
-                            onClick={() => {
-                                setSlotIndex(index)
-                                setSlotTime('')
-                            }}
-                            key={index}
-                            className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${
-                                slotIndex === index
-                                    ? 'bg-primary text-white'
-                                    : 'border border-[#DDDDDD]'
-                            }`}
-                        >
-                            <p>{item[0] && daysOfWeek[item[0].datetime.getDay()]}</p>
-                            <p>{item[0] && item[0].datetime.getDate()}</p>
-                        </div>
-                    ))}
-                </div>
+                    {
+                        rescheduleId
+                            ? "Select a new appointment slot"
+                            : "Booking slots"
+                    }
 
-                <div className='flex items-center gap-3 w-full overflow-x-scroll mt-4'>
-                    {docSlots.length > 0 && docSlots[slotIndex] && docSlots[slotIndex].map((item, index) => (
+                </p>
+
+
+                {
+                    rescheduleId && (
+
                         <p
-                            onClick={() => setSlotTime(item.time)}
-                            key={index}
-                            className={`text-sm font-light flex-shrink-0 px-5 py-2 rounded-full cursor-pointer ${
-                                item.time === slotTime
-                                    ? 'bg-primary text-white'
-                                    : 'text-[#949494] border border-[#B4B4B4]'
-                            }`}
+                            className="
+                                text-sm
+                                font-normal
+                                text-gray-500
+                                mt-1
+                            "
                         >
-                            {item.time.toLowerCase()}
+                            Choose a new date and
+                            time for your appointment.
                         </p>
-                    ))}
-                </div>
+                    )
+                }
 
-                <button
-                    onClick={submitAppointment}
-                    className='bg-primary text-white text-sm font-light px-20 py-3 rounded-full my-6'
-                >
-                    {rescheduleId ? 'Confirm reschedule' : 'Book an appointment'}
-                </button>
+
+                {
+                    !docInfo.available ? (
+
+                        <div
+                            className="
+                                mt-5
+                                bg-red-50
+                                border
+                                border-red-200
+                                text-red-600
+                                p-4
+                                rounded-lg
+                                max-w-xl
+                            "
+                        >
+                            This doctor is currently
+                            not accepting appointments.
+                        </div>
+
+                    ) : (
+
+                        <>
+
+                            <div
+                                className="
+                                    flex
+                                    gap-3
+                                    items-center
+                                    w-full
+                                    overflow-x-auto
+                                    mt-4
+                                    pb-2
+                                "
+                            >
+
+                                {
+                                    docSlots.map(
+                                        (
+                                            item,
+                                            index
+                                        ) => {
+
+                                            const unavailable =
+                                                item.slots.length === 0;
+
+                                            return (
+
+                                                <div
+                                                    onClick={() => {
+
+                                                        if (
+                                                            !unavailable
+                                                        ) {
+
+                                                            setSlotIndex(
+                                                                index
+                                                            );
+
+                                                            setSlotTime(
+                                                                ""
+                                                            );
+                                                        }
+                                                    }}
+                                                    key={
+                                                        item.slotDate
+                                                    }
+                                                    className={`
+                                                        text-center
+                                                        py-4
+                                                        px-3
+                                                        min-w-20
+                                                        rounded-xl
+                                                        transition-all
+
+                                                        ${
+                                                            unavailable
+                                                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                                : "cursor-pointer"
+                                                        }
+
+                                                        ${
+                                                            slotIndex === index &&
+                                                            !unavailable
+                                                                ? "bg-primary text-white"
+                                                                : !unavailable
+                                                                    ? "border border-[#DDDDDD]"
+                                                                    : ""
+                                                        }
+                                                    `}
+                                                >
+
+                                                    <p
+                                                        className="
+                                                            text-xs
+                                                        "
+                                                    >
+                                                        {
+                                                            daysOfWeek[
+                                                                item.date.getDay()
+                                                            ]
+                                                        }
+                                                    </p>
+
+                                                    <p
+                                                        className="
+                                                            text-lg
+                                                            font-medium
+                                                        "
+                                                    >
+                                                        {
+                                                            item.date.getDate()
+                                                        }
+                                                    </p>
+
+                                                    <p
+                                                        className="
+                                                            text-xs
+                                                        "
+                                                    >
+                                                        {
+                                                            item.date.toLocaleDateString(
+                                                                "en-US",
+                                                                {
+                                                                    month:
+                                                                        "short"
+                                                                }
+                                                            )
+                                                        }
+                                                    </p>
+
+
+                                                    {
+                                                        item.isLeaveDate && (
+
+                                                            <p
+                                                                className="
+                                                                    text-[10px]
+                                                                    mt-1
+                                                                "
+                                                            >
+                                                                Leave
+                                                            </p>
+                                                        )
+                                                    }
+
+
+                                                    {
+                                                        !item.workingDay &&
+                                                        !item.isLeaveDate && (
+
+                                                            <p
+                                                                className="
+                                                                    text-[10px]
+                                                                    mt-1
+                                                                "
+                                                            >
+                                                                Closed
+                                                            </p>
+                                                        )
+                                                    }
+
+                                                </div>
+                                            );
+                                        }
+                                    )
+                                }
+
+                            </div>
+
+
+                            {
+                                docSlots[
+                                    slotIndex
+                                ]?.slots
+                                    ?.length > 0
+                                    ? (
+
+                                        <div
+                                            className="
+                                                flex
+                                                items-center
+                                                gap-3
+                                                w-full
+                                                overflow-x-auto
+                                                mt-4
+                                                pb-2
+                                            "
+                                        >
+
+                                            {
+                                                docSlots[
+                                                    slotIndex
+                                                ].slots.map(
+                                                    (
+                                                        item,
+                                                        index
+                                                    ) => (
+
+                                                        <p
+                                                            onClick={() =>
+                                                                setSlotTime(
+                                                                    item.time
+                                                                )
+                                                            }
+                                                            key={
+                                                                index
+                                                            }
+                                                            className={`
+                                                                text-sm
+                                                                font-light
+                                                                flex-shrink-0
+                                                                px-5
+                                                                py-2
+                                                                rounded-full
+                                                                cursor-pointer
+
+                                                                ${
+                                                                    item.time ===
+                                                                    slotTime
+                                                                        ? "bg-primary text-white"
+                                                                        : "text-[#949494] border border-[#B4B4B4]"
+                                                                }
+                                                            `}
+                                                        >
+                                                            {
+                                                                item.time.toLowerCase()
+                                                            }
+                                                        </p>
+                                                    )
+                                                )
+                                            }
+
+                                        </div>
+
+                                    )
+                                    : (
+
+                                        <p
+                                            className="
+                                                mt-4
+                                                text-sm
+                                                text-gray-500
+                                            "
+                                        >
+                                            No appointment slots
+                                            available for this date.
+                                        </p>
+                                    )
+                            }
+
+
+                            <button
+                                onClick={
+                                    submitAppointment
+                                }
+                                disabled={
+                                    !slotTime
+                                }
+                                className={`
+                                    text-white
+                                    text-sm
+                                    font-light
+                                    px-20
+                                    py-3
+                                    rounded-full
+                                    my-6
+                                    transition-all
+
+                                    ${
+                                        slotTime
+                                            ? "bg-primary cursor-pointer"
+                                            : "bg-gray-400 cursor-not-allowed"
+                                    }
+                                `}
+                            >
+
+                                {
+                                    rescheduleId
+                                        ? "Confirm reschedule"
+                                        : "Book an appointment"
+                                }
+
+                            </button>
+
+                        </>
+                    )
+                }
+
             </div>
 
-            {!rescheduleId && (
-                <RelatedDoctors speciality={docInfo.speciality} docId={docId} />
-            )}
-        </div>
-    ) : null
-}
 
-export default Appointment
+            {
+                !rescheduleId && (
+
+                    <RelatedDoctors
+                        speciality={
+                            docInfo.speciality
+                        }
+                        docId={
+                            docId
+                        }
+                    />
+                )
+            }
+
+        </div>
+
+    ) : null;
+};
+
+export default Appointment;

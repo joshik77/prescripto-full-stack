@@ -655,7 +655,7 @@ async (req, res) => {
             );
 
 
-        await sendAppointmentEmail({
+        sendAppointmentEmail({
 
             to:
                 userData.email,
@@ -862,7 +862,7 @@ async (req, res) => {
 
         if (userData) {
 
-            await sendAppointmentEmail({
+            sendAppointmentEmail({
 
                 to:
                     userData.email,
@@ -1253,7 +1253,7 @@ async (req, res) => {
 
         if (userData) {
 
-            await sendAppointmentEmail({
+            sendAppointmentEmail({
 
                 to:
                     userData.email,
@@ -1961,7 +1961,7 @@ async (req, res) => {
                     error
                         ?.message ||
 
-                    "Payment verification failed"
+                    "Razorpay payment verification failed"
             });
     }
 };

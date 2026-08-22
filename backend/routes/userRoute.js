@@ -1,4 +1,4 @@
-import express from 'express';
+import express from "express";
 
 import {
     loginUser,
@@ -9,74 +9,97 @@ import {
     listAppointment,
     cancelAppointment,
     rescheduleAppointment,
+    addReview,
+    getDoctorReviews,
     paymentRazorpay,
     verifyRazorpay,
     paymentStripe,
     verifyStripe
-} from '../controllers/userController.js';
+} from "../controllers/userController.js";
 
-import upload from '../middleware/multer.js';
-import authUser from '../middleware/authUser.js';
+import upload from "../middleware/multer.js";
+import authUser from "../middleware/authUser.js";
 
 const userRouter = express.Router();
 
-userRouter.post('/register', registerUser);
-
-userRouter.post('/login', loginUser);
-
-userRouter.get('/get-profile', authUser, getProfile);
+userRouter.post(
+    "/register",
+    registerUser
+);
 
 userRouter.post(
-    '/update-profile',
-    upload.single('image'),
+    "/login",
+    loginUser
+);
+
+userRouter.get(
+    "/get-profile",
+    authUser,
+    getProfile
+);
+
+userRouter.post(
+    "/update-profile",
+    upload.single("image"),
     authUser,
     updateProfile
 );
 
 userRouter.post(
-    '/book-appointment',
+    "/book-appointment",
     authUser,
     bookAppointment
 );
 
 userRouter.post(
-    '/reschedule-appointment',
+    "/reschedule-appointment",
     authUser,
     rescheduleAppointment
 );
 
 userRouter.get(
-    '/appointments',
+    "/appointments",
     authUser,
     listAppointment
 );
 
 userRouter.post(
-    '/cancel-appointment',
+    "/cancel-appointment",
     authUser,
     cancelAppointment
 );
 
 userRouter.post(
-    '/payment-razorpay',
+    "/add-review",
+    authUser,
+    addReview
+);
+
+userRouter.get(
+    "/doctor-reviews/:docId",
+    getDoctorReviews
+);
+
+userRouter.post(
+    "/payment-razorpay",
     authUser,
     paymentRazorpay
 );
 
 userRouter.post(
-    '/verifyRazorpay',
+    "/verifyRazorpay",
     authUser,
     verifyRazorpay
 );
 
 userRouter.post(
-    '/payment-stripe',
+    "/payment-stripe",
     authUser,
     paymentStripe
 );
 
 userRouter.post(
-    '/verifyStripe',
+    "/verifyStripe",
     authUser,
     verifyStripe
 );

@@ -1,36 +1,43 @@
 import mongoose from "mongoose";
 
 const defaultWorkingHours = {
+
     sunday: {
         enabled: false,
         startTime: "10:00",
         endTime: "21:00"
     },
+
     monday: {
         enabled: true,
         startTime: "10:00",
         endTime: "21:00"
     },
+
     tuesday: {
         enabled: true,
         startTime: "10:00",
         endTime: "21:00"
     },
+
     wednesday: {
         enabled: true,
         startTime: "10:00",
         endTime: "21:00"
     },
+
     thursday: {
         enabled: true,
         startTime: "10:00",
         endTime: "21:00"
     },
+
     friday: {
         enabled: true,
         startTime: "10:00",
         endTime: "21:00"
     },
+
     saturday: {
         enabled: true,
         startTime: "10:00",
@@ -114,6 +121,16 @@ const doctorSchema = new mongoose.Schema({
     leaveDates: {
         type: [String],
         default: []
+    },
+
+    rating: {
+        type: Number,
+        default: 0
+    },
+
+    reviewCount: {
+        type: Number,
+        default: 0
     }
 
 }, {
@@ -122,6 +139,9 @@ const doctorSchema = new mongoose.Schema({
 
 const doctorModel =
     mongoose.models.doctor ||
-    mongoose.model("doctor", doctorSchema);
+    mongoose.model(
+        "doctor",
+        doctorSchema
+    );
 
 export default doctorModel;
